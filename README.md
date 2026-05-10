@@ -337,6 +337,25 @@ Set the environment for `acp.registry.claude-acp`:
 
 Restart the IDE after changing the file.
 
+### Zed Code Editor
+
+Open the Zed Settings File or go into Zed Settings and click `Edit in settings.json`:
+
+Set the environment for `agent_servers.claude-acp`:
+```json
+"agent_servers": {
+  "claude-acp": {
+    "type": "registry",
+    "env": {
+      "ANTHROPIC_BASE_URL": "http://localhost:8082",
+      "ANTHROPIC_AUTH_TOKEN": "freecc",
+    }
+  }
+}
+```
+
+Restart the IDE after changing the file.
+
 ### Model Picker
 
 Claude Code 2.1.126 or later can populate `/model` from this proxy's Gateway `/v1/models` response when `ANTHROPIC_BASE_URL` points here. In **2.1.126–2.1.128** that discovery was automatic; **newer releases** require **`CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1`** in the same environment as `ANTHROPIC_*`. Omit the flag if you only set models via proxy config and never use `/model` discovery.
