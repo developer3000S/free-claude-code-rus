@@ -136,6 +136,42 @@ def _walk_block_list_for_unsupported(blocks: Any, *, where: str) -> None:
             )
 
 
+def _filter_unsupported_tools(data: dict[str, Any]) -> None:
+    """Drop tools whose ``type`` variant DeepSeek's strict parser rejects.
+
+    DeepSeek's Anthropic endpoint only accepts client tools (name+input_schema)
+    and server tools whose type starts with ``web_search_`` or ``web_fetch_``.
+    Anything else (e.g. ``advisor_20260301``, ``computer_20241022``, harness
+    server tools added by Claude Code) makes DeepSeek reject the entire
+    request with HTTP 400.
+    """
+    tools = data.get("tools")
+    if not isinstance(tools, list):
+        return
+    kept: list[Any] = []
+    dropped: list[str] = []
+    for tool in tools:
+        if not isinstance(tool, dict):
+            kept.append(tool)
+            continue
+        typ = tool.get("type")
+        if isinstance(typ, str) and typ:
+            if typ.startswith("web_search_") or typ.startswith("web_fetch_"):
+                kept.append(tool)
+            else:
+                dropped.append(typ)
+        else:
+            # Standard client tool (name + input_schema).
+            kept.append(tool)
+    if dropped:
+        logger.info(
+            "DEEPSEEK_REQUEST: stripped {} unsupported server tool(s): {}",
+            len(dropped),
+            dropped,
+        )
+        data["tools"] = kept
+
+
 def _validate_deepseek_native_request_dict(data: dict[str, Any]) -> None:
     mcp = data.get("mcp_servers")
     if mcp:
@@ -394,6 +430,7 @@ def build_request_body(request_data: Any, *, thinking_enabled: bool) -> dict:
     if "messages" in data:
         data["messages"] = _strip_unsupported_attachment_blocks(data["messages"])
     _validate_deepseek_native_request_dict(data)
+    _filter_unsupported_tools(data)
     data.pop("extra_body", None)
 
     has_tool_history = _has_tool_history(data)
