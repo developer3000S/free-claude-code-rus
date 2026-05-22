@@ -1,54 +1,57 @@
+```markdown
 # AGENTIC DIRECTIVE
 
-> This file is identical to CLAUDE.md. Keep them in sync.
+> Этот файл идентичен `CLAUDE.md`. Поддерживайте их синхронизированными.
 
-## CODING ENVIRONMENT
+## ОКРУЖЕНИЕ РАЗРАБОТКИ
 
-- Install astral uv using "curl -LsSf https://astral.sh/uv/install.sh | sh" if not already installed and if already installed then update it to the latest version
-- Install Python 3.14.0 stable using `uv python install 3.14.0` if not already installed (requires uv >=0.9; see `[tool.uv] required-version` in `pyproject.toml`)
-- Always use `uv run` to run files instead of the global `python` command.
-- Current uv ruff formatter is set to py314 which has supports multiple exception types without paranthesis (except TypeError, ValueError:)
-- Read `.env.example` for environment variables.
-- All CI checks must pass; failing checks block merge.
-- Add tests for new changes (including edge cases), then run `uv run pytest`.
-- Run checks in this order: `uv run ruff format`, `uv run ruff check`, `uv run ty check`, `uv run pytest`.
-- Do not add `# type: ignore` or `# ty: ignore`; fix the underlying type issue.
-- All 5 checks are enforced in `tests.yml` on push/merge (parallel jobs: suppression grep, ruff-format, ruff-check, ty, pytest).
-- Branch protection: set **required status checks** to **all** of those statuses (e.g. **Ban type ignore suppressions**, **ruff-format**, **ruff-check**, **ty**, **pytest**—use the exact labels GitHub shows, which may be prefixed with **CI /**). Remove **ci** from required checks if it was previously added for the old gate job.
+- Установите `astral uv` командой "curl -LsSf https://astral.sh/uv/install.sh | sh", если он ещё не установлен; при наличии — обновите до последней версии.
+- Установите Python 3.14.0 stable через `uv python install 3.14.0` при необходимости (требует `uv >= 0.9`; см. `[tool.uv] required-version` в `pyproject.toml`).
+- Всегда используйте `uv run` для запуска файлов вместо глобальной команды `python`.
+- Текущий форматтер ruff для `uv` настроен на `py314`, который поддерживает множественные типы исключений без скобок (за исключением `TypeError, ValueError:` в некоторых альфа-версиях).
+- Ознакомьтесь с файлом `.env.example` для списка переменных окружения.
+- Все CI-проверки должны проходить; провал — блокирует слияние.
+- Добавляйте тесты для новых изменений (включая граничные случаи), затем запускайте `uv run pytest`.
+- Выполняйте проверки в этом порядке: `uv run ruff format`, `uv run ruff check`, `uv run ty check`, `uv run pytest`.
+- Не добавляйте `# type: ignore` или `# ty: ignore`; исправляйте корневую причину проблем с типами.
+- Все 5 проверок включены в `tests.yml` при пуше/слиянии (параллельные джобы: suppression grep, ruff-format, ruff-check, ty, pytest).
+- Branch protection: пометьте **required status checks** как **все** перечисленные проверки (например, **Ban type ignore suppressions**, **ruff-format**, **ruff-check**, **ty**, **pytest** — используйте точные метки GitHub, они могут быть с префиксом **CI /**). Если ранее добавили **ci** как проверку, удалите его.
 
-## IDENTITY & CONTEXT
+## ИДЕНТИЧНОСТЬ И КОНТЕКСТ
 
-- You are an expert Software Architect and Systems Engineer.
-- Goal: Zero-defect, root-cause-oriented engineering for bugs; test-driven engineering for new features. Think carefully; no need to rush.
-- Code: Write the simplest code possible. Keep the codebase minimal and modular.
+- Вы являетесь экспертом по архитектуре ПО и системному инжинирингу.
+- Цель: нулевая толерантность к дефектам, исправление корневых причин ошибок; разработка новых фич с тестированием (TDD). Думайте внимательно, не торопитесь.
+- Код: пишите максимально простую реализацию. Сохраняйте кодовую базу минимальной и модульной.
 
-## ARCHITECTURE PRINCIPLES
+## ПРИНЦИПЫ АРХИТЕКТУРЫ
 
-- **Shared utilities**: Put shared Anthropic protocol logic in neutral `core/anthropic/` modules. Do not have one provider import from another provider's utils.
-- **DRY**: Extract shared base classes to eliminate duplication. Prefer composition over copy-paste.
-- **Encapsulation**: Use accessor methods for internal state (e.g. `set_current_task()`), not direct `_attribute` assignment from outside.
-- **Provider-specific config**: Keep provider-specific fields (e.g. `nim_settings`) in provider constructors, not in the base `ProviderConfig`.
-- **Dead code**: Remove unused code, legacy systems, and hardcoded values. Use settings/config instead of literals (e.g. `settings.provider_type` not `"nvidia_nim"`).
-- **Performance**: Use list accumulation for strings (not `+=` in loops), cache env vars at init, prefer iterative over recursive when stack depth matters.
-- **Platform-agnostic naming**: Use generic names (e.g. `PLATFORM_EDIT`) not platform-specific ones (e.g. `TELEGRAM_EDIT`) in shared code.
-- **No type ignores**: Do not add `# type: ignore` or `# ty: ignore`. Fix the underlying type issue.
-- **Complete migrations**: When moving modules, update imports to the new owner and remove old compatibility shims in the same change unless preserving a published interface is explicitly required.
-- **Maximum Test Coverage**: There should be maximum test coverage for everything, preferably live smoke test coverage to catch bugs early
+- **Общие утилиты**: поместите общую логику протокола Anthropic в нейтральные модули `core/anthropic/`. Не импортируйте утилиты одного провайдера в другом.
+- **DRY**: извлекайте общие базовые классы, чтобы устранить дублирование. Предпочитайте композицию вместо копипаста.
+- **Инкапсуляция**: используйте методы доступа для внутреннего состояния (например, `set_current_task()`), а не прямое присваивание `_attribute` извне.
+- **Провайдер-специфичная конфигурация**: храните поля, специфичные для провайдера (например, `nim_settings`), в конструкторах провайдера, а не в базовом `ProviderConfig`.
+- **Удаляйте мёртвый код**: удаляйте неиспользуемый код, устаревшие системы и захардкоженные значения. Используйте настройки/конфиг вместо литералов (например, `settings.provider_type`, а не "nvidia_nim").
+- **Производительность**: собирайте строки в списки (не используйте `+=` в циклах), кешируйте переменные окружения при инициализации, предпочитайте итеративные алгоритмы рекурсивным, если это важно для глубины стека.
+- **Платформо-независимые имена**: используйте общие имена (например, `PLATFORM_EDIT`), а не платформенно-специфичные (`TELEGRAM_EDIT`) в общем коде.
+- **Без игнорирования типов**: не добавляйте `# type: ignore` или `# ty: ignore`. Исправляйте корневые проблемы типов.
+- **Полные миграции**: при перемещении модулей обновляйте импорты и удаляйте старые shim-обёртки в том же изменении, если не требуется сохранение совместимости публичного интерфейса.
+- **Максимальное покрытие тестами**: стремитесь к максимальному покрытию тестами, желательно включать live smoke-тесты для раннего выявления проблем.
 
-## COGNITIVE WORKFLOW
+## КОГНИТИВНЫЙ РАБОЧИЙ ПОТОК
 
-1. **ANALYZE**: Read relevant files. Do not guess.
-2. **PLAN**: Map out the logic. Identify root cause or required changes. Order changes by dependency.
-3. **EXECUTE**: Fix the cause, not the symptom. Execute incrementally with clear commits.
-4. **VERIFY**: Run ci checks and relevant smoke tests. Confirm the fix via logs or output.
-5. **SPECIFICITY**: Do exactly as much as asked; nothing more, nothing less.
-6. **PROPAGATION**: Changes impact multiple files; propagate updates correctly.
+1. **АНАЛИЗ**: читайте релевантные файлы. Не догадывайтесь.
+2. **ПЛАН**: составьте карту логики. Найдите корневую причину или требуемые изменения. Распределите по зависимостям.
+3. **ВЫПОЛНЕНИЕ**: исправляйте причину, а не симптом. Выполняйте изменения итеративно с понятными коммитами.
+4. **ПРОВЕРКА**: запускайте CI-проверки и релевантные smoke-тесты. Подтверждайте исправления по логам и результатам.
+5. **ТОЧНОСТЬ**: делайте ровно то, что требуется; ничего лишнего.
+6. **ПРОПАГАЦИЯ**: изменения затрагивают несколько файлов; корректно распространяйте правки.
 
-## SUMMARY STANDARDS
+## СТАНДАРТЫ ОТЧЁТОВ
 
-- Summaries must be technical and granular.
-- Include: [Files Changed], [Logic Altered], [Verification Method], [Residual Risks] (if no residual risks then say none).
+- Отчёты должны быть техническими и детальными.
+- Включайте: [Изменённые файлы], [Изменённая логика], [Метод верификации], [Остаточные риски] (если рисков нет — укажите «нет»).
 
-## TOOLS
+## ИНСТРУМЕНТЫ
 
-- Prefer built-in tools (grep, read_file, etc.) over manual workflows. Check tool availability before use.
+- Предпочитайте встроенные инструменты (grep, read_file и т.д.) перед ручными операциями. Перед использованием проверяйте доступность инструментов.
+
+```

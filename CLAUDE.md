@@ -1,1 +1,3 @@
-IMPORTANT: Ensure you’ve thoroughly reviewed the [AGENTS.md](AGENTS.md) file before beginning any work.
+```markdown
+ВАЖНО: Перед началом работы внимательно ознакомьтесь с файлом [AGENTS.md](AGENTS.md).
+```

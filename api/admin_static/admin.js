@@ -10,22 +10,22 @@ const MASKED_SECRET = "********";
 const VIEW_GROUPS = [
   {
     id: "providers",
-    label: "Providers",
-    title: "Providers",
+    label: "Провайдеры",
+    title: "Провайдеры",
     sections: ["providers", "runtime"],
     containerId: "providersSections",
   },
   {
     id: "model_config",
-    label: "Model Config",
-    title: "Model Config",
+    label: "Модели",
+    title: "Конфигурация моделей",
     sections: ["models", "thinking", "web_tools"],
     containerId: "modelConfigSections",
   },
   {
     id: "messaging",
-    label: "Messaging",
-    title: "Messaging",
+    label: "Сообщения",
+    title: "Настройки сообщений",
     sections: ["messaging", "voice"],
     containerId: "messagingSections",
   },
@@ -35,12 +35,12 @@ const byId = (id) => document.getElementById(id);
 
 function sourceLabel(source) {
   const labels = {
-    default: "default",
-    template: "template",
-    repo_env: "repo .env",
+    default: "по умолчанию",
+    template: "шаблон",
+    repo_env: "репозиторий .env",
     managed_env: "",
     explicit_env_file: "FCC_ENV_FILE",
-    process: "process env",
+    process: "переменные окружения процесса",
   };
   return Object.prototype.hasOwnProperty.call(labels, source) ? labels[source] : source;
 }
@@ -52,7 +52,7 @@ function sourceText(field) {
     parts.push(label);
   }
   if (field.locked) {
-    parts.push("locked");
+    parts.push("заблокировано");
   }
   return parts.join(" ");
 }
@@ -179,13 +179,13 @@ function renderProviders(providerStatus) {
     meta.className = "provider-meta";
     meta.textContent =
       provider.kind === "local"
-        ? provider.base_url || "No local URL configured"
+        ? provider.base_url || "Локальный URL не настроен"
         : provider.credential_env;
 
     const button = document.createElement("button");
     button.type = "button";
     button.className = "test-button";
-    button.textContent = provider.kind === "local" ? "Test" : "Refresh models";
+    button.textContent = provider.kind === "local" ? "Тест" : "Обновить модели";
     button.addEventListener("click", () => testProvider(provider.provider_id, button));
 
     card.append(title, meta, button);
@@ -244,10 +244,10 @@ function renderSections(sections, fields) {
         const toggle = document.createElement("button");
         toggle.type = "button";
         toggle.className = "ghost-button advanced-toggle";
-        toggle.textContent = "Show advanced";
+        toggle.textContent = "Показать дополнительные";
         toggle.addEventListener("click", () => {
           const showing = sectionEl.classList.toggle("show-advanced");
-          toggle.textContent = showing ? "Hide advanced" : "Show advanced";
+          toggle.textContent = showing ? "Скрыть дополнительные" : "Показать дополнительные";
         });
         sectionEl.appendChild(toggle);
       }
@@ -308,9 +308,9 @@ function inputForField(field) {
   if (field.type === "tri_boolean") {
     const select = document.createElement("select");
     [
-      ["", "Inherit"],
-      ["true", "Enabled"],
-      ["false", "Disabled"],
+      ["", "Наследовать"],
+      ["true", "Включено"],
+      ["false", "Отключено"],
     ].forEach(([value, label]) => select.appendChild(option(value, label)));
     select.value = field.value || "";
     return select;
@@ -331,11 +331,11 @@ function inputForField(field) {
 
   const input = document.createElement("input");
   input.type = field.type === "number" ? "number" : "text";
-  if (field.type === "secret") {
+    if (field.type === "secret") {
     input.type = "password";
     input.placeholder = field.configured
-      ? "Configured - enter a new value to replace"
-      : "Not configured";
+      ? "Секрет настроен — введите новое значение для замены"
+      : "Не настроено";
     input.value = "";
     input.autocomplete = "off";
   } else {
@@ -376,8 +376,13 @@ function changedValues() {
 
 function updateDirtyState() {
   const count = Object.keys(changedValues()).length;
-  byId("dirtyState").textContent =
-    count === 0 ? "No changes" : `${count} unsaved change${count === 1 ? "" : "s"}`;
+  if (count === 0) {
+    byId("dirtyState").textContent = "Изменений нет";
+  } else if (count === 1) {
+    byId("dirtyState").textContent = "1 несохранённое изменение";
+  } else {
+    byId("dirtyState").textContent = `${count} несохранённых изменений`;
+  }
   byId("applyButton").disabled = count === 0;
 }
 
@@ -394,7 +399,7 @@ async function validate(showResult = true) {
 
 function showValidationResult(result) {
   if (result.valid) {
-    showMessage("Config shape is valid", "ok");
+    showMessage("Конфигурация валидна", "ok");
   } else {
     showMessage(result.errors.join("; "), "error");
   }
@@ -411,7 +416,7 @@ async function apply() {
   }
   const restart = result.restart || {};
   if (restart.required && restart.automatic) {
-    showMessage("Applied. Restarting server...", "ok");
+    showMessage("Применено. Перезапуск сервера...", "ok");
     byId("applyButton").disabled = true;
     setTimeout(() => {
       window.location.href = restart.admin_url || "/admin";
@@ -422,8 +427,8 @@ async function apply() {
   await load();
   showMessage(
     pending.length
-      ? `Applied. Restart fcc-server to use: ${pending.join(", ")}`
-      : "Applied",
+      ? `Применено. Перезапустите fcc-server чтобы применить: ${pending.join(", ")}`
+      : "Применено",
     "ok",
   );
 }
@@ -433,7 +438,7 @@ async function refreshLocalStatus() {
   result.providers.forEach((provider) => {
     state.localStatus.set(provider.provider_id, provider);
     const meta = provider.status_code
-      ? `${provider.base_url} returned HTTP ${provider.status_code}`
+      ? `${provider.base_url} вернул HTTP ${provider.status_code}`
       : provider.base_url;
     updateProviderCard(provider.provider_id, provider.status, provider.label, meta);
   });
@@ -442,7 +447,7 @@ async function refreshLocalStatus() {
 async function testProvider(providerId, button) {
   const original = button.textContent;
   button.disabled = true;
-  button.textContent = "Testing";
+  button.textContent = "Тестирование";
   try {
     const result = await api(`/admin/api/providers/${providerId}/test`, {
       method: "POST",
@@ -452,8 +457,8 @@ async function testProvider(providerId, button) {
       updateProviderCard(
         providerId,
         "reachable",
-        `${result.models.length} models`,
-        result.models.slice(0, 3).join(", ") || "No models returned",
+        `${result.models.length} моделей`,
+        result.models.slice(0, 3).join(", ") || "Модели не возвращены",
       );
       state.modelOptions = Array.from(
         new Set([

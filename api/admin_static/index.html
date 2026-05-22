@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Free Claude Code Admin</title>
+    <title>Free Claude Code — Админ</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="/admin/assets/admin.css" />
   </head>
@@ -14,7 +14,7 @@
           <div class="brand-mark">FC</div>
           <div>
             <h1>Free Claude Code</h1>
-            <p>Server Control</p>
+            <p>Управление сервером</p>
           </div>
         </div>
         <nav id="sectionNav" class="section-nav" aria-label="Admin views"></nav>
@@ -23,15 +23,15 @@
       <main class="main">
         <header class="topbar">
           <div>
-            <h2 id="pageTitle">Providers</h2>
+            <h2 id="pageTitle">Провайдеры</h2>
           </div>
         </header>
 
         <div id="adminViews" class="admin-views">
           <section id="view-providers" class="admin-view active" data-view="providers">
-            <section class="provider-strip" aria-label="Provider status">
+            <section class="provider-strip" aria-label="Статус провайдеров">
               <div class="strip-header">
-                <h3>Providers</h3>
+                <h3>Провайдеры</h3>
               </div>
               <div id="providerGrid" class="provider-grid"></div>
             </section>
@@ -46,7 +46,7 @@
             <div
               id="modelConfigSections"
               class="form-sections"
-              aria-label="Model configuration"
+              aria-label="Конфигурация моделей"
             ></div>
           </section>
 
@@ -54,7 +54,7 @@
             <div
               id="messagingSections"
               class="form-sections"
-              aria-label="Messaging configuration"
+              aria-label="Настройки сообщений"
             ></div>
           </section>
         </div>
@@ -62,13 +62,13 @@
 
       <footer class="action-bar">
         <div class="action-meta">
-          <strong id="dirtyState">No changes</strong>
+          <strong id="dirtyState">Изменений нет</strong>
           <span id="configPath"></span>
         </div>
         <div id="messageArea" class="message-area"></div>
         <div class="action-buttons">
-          <button id="validateButton" class="secondary-button" type="button">Validate</button>
-          <button id="applyButton" class="primary-button" type="button" disabled>Apply</button>
+          <button id="validateButton" class="secondary-button" type="button">Проверить</button>
+          <button id="applyButton" class="primary-button" type="button" disabled>Применить</button>
         </div>
       </footer>
     </div>
