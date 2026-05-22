@@ -24,6 +24,7 @@ from cli.process_registry import (
     register_pid,
     unregister_pid,
 )
+from config.logging_config import install_uvicorn_access_log_filter
 from config.paths import config_dir_path, legacy_env_paths, managed_env_path
 from config.settings import Settings, get_settings
 
@@ -116,8 +117,12 @@ def _run_supervised_server(settings: Settings, *, open_admin_browser: bool) -> b
         host=settings.host,
         port=settings.port,
         log_level="debug",
+        access_log=True,
         timeout_graceful_shutdown=SERVER_GRACEFUL_SHUTDOWN_SECONDS,
     )
+    # Hide noisy HEAD / and HEAD /health liveness probes after uvicorn finishes
+    # wiring its own access logger so the filter survives dictConfig setup.
+    install_uvicorn_access_log_filter()
     server = uvicorn.Server(config)
     server_holder["server"] = server
     if open_admin_browser:

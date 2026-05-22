@@ -3,6 +3,7 @@
 import tomllib
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -213,7 +214,7 @@ def test_serve_supervisor_restarts_when_app_requests_restart() -> None:
     settings = _launcher_settings()
     get_settings = MagicMock(side_effect=[settings, settings])
     get_settings.cache_clear = MagicMock()
-    servers: list[object] = []
+    servers: list[Any] = []
 
     class FakeServer:
         def __init__(self, config):
@@ -239,6 +240,7 @@ def test_serve_supervisor_restarts_when_app_requests_restart() -> None:
         entrypoints.serve()
 
     assert len(servers) == 2
+    assert all(server.config.kwargs["access_log"] is True for server in servers)
     get_settings.cache_clear.assert_called_once()
     kill_all.assert_called_once()
 

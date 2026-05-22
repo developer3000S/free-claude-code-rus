@@ -3,6 +3,7 @@
 import asyncio
 import json
 import os
+import shutil
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 from typing import Any
@@ -15,6 +16,26 @@ from .process_registry import kill_pid_tree_best_effort, register_pid, unregiste
 
 # Cap stderr capture so a runaway child cannot exhaust memory; pipe is still drained.
 _MAX_STDERR_CAPTURE_BYTES = 256 * 1024
+_CLAUDE_INSTALL_HINT = (
+    "Install Claude Code with: npm install -g @anthropic-ai/claude-code"
+)
+
+
+def _claude_command_not_found_message(claude_bin: str) -> str:
+    return (
+        f"Could not find Claude Code command: {claude_bin}. "
+        f"{_CLAUDE_INSTALL_HINT}, or set CLAUDE_CLI_BIN to the full path."
+    )
+
+
+def _resolve_claude_command(claude_bin: str) -> str:
+    """Resolve Windows npm command shims while preserving POSIX argv behavior."""
+    resolved = shutil.which(claude_bin)
+    if resolved is None:
+        return claude_bin
+    if os.name == "nt":
+        return resolved
+    return claude_bin
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,10 +150,12 @@ class CLISession:
             env["TERM"] = "dumb"
             env["PYTHONIOENCODING"] = "utf-8"
 
+            claude_command = _resolve_claude_command(self.claude_bin)
+
             # Build command
             if session_id and not session_id.startswith("pending_"):
                 cmd = [
-                    self.claude_bin,
+                    claude_command,
                     "--resume",
                     session_id,
                 ]
@@ -148,7 +171,7 @@ class CLISession:
                 ]
             else:
                 cmd = [
-                    self.claude_bin,
+                    claude_command,
                     "-p",
                     prompt,
                     "--output-format",
@@ -178,17 +201,23 @@ class CLISession:
                 prompt=prompt,
                 cwd=self.workspace,
                 claude_binary=self.claude_bin,
+                resolved_claude_binary=claude_command,
                 cli_argv=cmd,
             )
 
             try:
-                self.process = await asyncio.create_subprocess_exec(
-                    *cmd,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                    cwd=self.workspace,
-                    env=env,
-                )
+                try:
+                    self.process = await asyncio.create_subprocess_exec(
+                        *cmd,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                        cwd=self.workspace,
+                        env=env,
+                    )
+                except FileNotFoundError as exc:
+                    raise FileNotFoundError(
+                        _claude_command_not_found_message(self.claude_bin)
+                    ) from exc
                 if self.process and self.process.pid:
                     register_pid(self.process.pid)
 

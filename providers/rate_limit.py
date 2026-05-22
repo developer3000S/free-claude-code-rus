@@ -5,6 +5,8 @@ import random
 import time
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from typing import Any, ClassVar, TypeVar
 
 import httpx
@@ -41,6 +43,50 @@ def retryable_upstream_status(exc: BaseException) -> int | None:
             return status
         return None
     return None
+
+
+def _retry_after_response(exc: BaseException) -> Any | None:
+    if isinstance(exc, httpx.HTTPStatusError):
+        return exc.response
+    return getattr(exc, "response", None)
+
+
+def _parse_retry_after_delay(
+    value: str, *, now: datetime | None = None
+) -> float | None:
+    retry_after = value.strip()
+    if not retry_after:
+        return None
+
+    try:
+        seconds = float(retry_after)
+    except ValueError:
+        seconds = None
+    if seconds is not None:
+        return max(0.0, seconds)
+
+    try:
+        retry_at = parsedate_to_datetime(retry_after)
+    except TypeError, ValueError, IndexError, OverflowError:
+        return None
+    if retry_at.tzinfo is None:
+        retry_at = retry_at.replace(tzinfo=UTC)
+    now_dt = now or datetime.now(UTC)
+    return max(0.0, (retry_at - now_dt).total_seconds())
+
+
+def retry_after_delay(
+    exc: BaseException, *, now: datetime | None = None
+) -> float | None:
+    """Return provider-requested retry delay from a ``Retry-After`` header."""
+    response = _retry_after_response(exc)
+    headers = getattr(response, "headers", None)
+    if headers is None:
+        return None
+    value = headers.get("Retry-After")
+    if value is None:
+        return None
+    return _parse_retry_after_delay(str(value), now=now)
 
 
 class GlobalRateLimiter:
@@ -277,12 +323,24 @@ class GlobalRateLimiter:
                     )
                     break
 
+                retry_after = retry_after_delay(e)
                 delay = min(base_delay * (2**attempt), max_delay)
                 delay += random.uniform(0, jitter)
+                if retry_after is not None:
+                    delay = max(delay, retry_after)
+                elif status == 429:
+                    # When the upstream omits Retry-After on a rate limit, wait
+                    # at least one full proactive window so the next attempt
+                    # lines up with fresh upstream capacity.
+                    delay = max(delay, self._rate_window)
                 attempt_no = attempt + 1
+                retry_after_detail = (
+                    "" if retry_after is None else f" (Retry-After {retry_after:.1f}s)"
+                )
                 logger.warning(
-                    "{}, attempt {}/{}. Retrying in {:.1f}s...",
+                    "{}{}, attempt {}/{}. Retrying in {:.1f}s...",
                     label,
+                    retry_after_detail,
                     attempt_no,
                     total_attempts,
                     delay,
@@ -295,6 +353,9 @@ class GlobalRateLimiter:
                     attempt=attempt_no,
                     max_attempts=total_attempts,
                     delay_s=round(delay, 3),
+                    retry_after_s=(
+                        None if retry_after is None else round(retry_after, 3)
+                    ),
                 )
                 self.set_blocked(delay)
                 await asyncio.sleep(delay)

@@ -74,6 +74,39 @@ def _serialize_with_context(record) -> str:
     return "{_json}\n"
 
 
+class HideProbeAccessLog(logging.Filter):
+    """Drop noisy uvicorn access lines for liveness/HEAD probes.
+
+    Targets ``HEAD /`` and ``HEAD /health`` requests issued by the client launcher
+    preflight check and similar liveness pings so they do not flood the console.
+    """
+
+    _PROBE_PATHS = frozenset({"", "/health"})
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        args = record.args
+        if not isinstance(args, tuple) or len(args) < 3:
+            return True
+        method = args[1]
+        if method != "HEAD":
+            return True
+        path = str(args[2]).split("?", 1)[0].rstrip("/")
+        return path not in self._PROBE_PATHS
+
+
+def install_uvicorn_access_log_filter() -> None:
+    """Install :class:`HideProbeAccessLog` on the ``uvicorn.access`` logger.
+
+    Must be invoked **after** :class:`uvicorn.Config` is constructed so the filter
+    survives uvicorn's own logging setup. Safe to call repeatedly: existing
+    instances of the filter are not duplicated.
+    """
+    access_logger = logging.getLogger("uvicorn.access")
+    if any(isinstance(f, HideProbeAccessLog) for f in access_logger.filters):
+        return
+    access_logger.addFilter(HideProbeAccessLog())
+
+
 class InterceptHandler(logging.Handler):
     """Redirect stdlib logging to loguru."""
 

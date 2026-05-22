@@ -239,6 +239,61 @@ class TestCLISession:
             assert session.current_session_id == "sess_1"
 
     @pytest.mark.asyncio
+    async def test_start_task_resolves_windows_npm_claude_command(self):
+        """Windows npm installs expose claude through claude.cmd on PATH."""
+        from cli.session import CLISession
+
+        resolved = r"C:\Users\me\AppData\Roaming\npm\claude.cmd"
+        session = CLISession("/tmp", "http://localhost:8082/v1")
+
+        mock_process = AsyncMock()
+        mock_process.stdout.read.side_effect = [b""]
+        mock_process.stderr.read.return_value = b""
+        mock_process.wait.return_value = 0
+
+        with (
+            patch("cli.session.os.name", "nt"),
+            patch("cli.session.shutil.which", return_value=resolved),
+            patch(
+                "asyncio.create_subprocess_exec", new_callable=AsyncMock
+            ) as mock_exec,
+        ):
+            mock_exec.return_value = mock_process
+
+            async for _ in session.start_task("Hello"):
+                pass
+
+            args = mock_exec.call_args[0]
+            assert args[0] == resolved
+
+    @pytest.mark.asyncio
+    async def test_start_task_missing_claude_command_has_actionable_error(self):
+        """Missing Claude CLI should not surface a raw platform WinError."""
+        from cli.session import CLISession
+
+        session = CLISession(
+            "/tmp", "http://localhost:8082/v1", claude_bin="claude-missing"
+        )
+
+        with (
+            patch("cli.session.shutil.which", return_value=None),
+            patch(
+                "asyncio.create_subprocess_exec",
+                new_callable=AsyncMock,
+                side_effect=FileNotFoundError(
+                    2, "The system cannot find the file specified"
+                ),
+            ),
+            pytest.raises(FileNotFoundError) as exc_info,
+        ):
+            async for _ in session.start_task("Hello"):
+                pass
+
+        message = str(exc_info.value)
+        assert "Could not find Claude Code command: claude-missing" in message
+        assert "npm install -g @anthropic-ai/claude-code" in message
+
+    @pytest.mark.asyncio
     async def test_start_task_with_session_resume(self):
         """Test resuming an existing session."""
         from cli.session import CLISession

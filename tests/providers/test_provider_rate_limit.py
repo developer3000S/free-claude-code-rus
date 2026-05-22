@@ -1,10 +1,12 @@
 import asyncio
 import time
+from datetime import UTC, datetime, timedelta
+from email.utils import format_datetime
 
 import pytest
 import pytest_asyncio
 
-from providers.rate_limit import GlobalRateLimiter
+from providers.rate_limit import GlobalRateLimiter, retry_after_delay
 
 
 class TestProviderRateLimiter:
@@ -277,6 +279,139 @@ class TestProviderRateLimiter:
         )
         assert result == "ok"
         assert call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_execute_with_retry_honors_retry_after_delta_seconds(self):
+        """HTTP 429 Retry-After delays the retry until upstream capacity is expected."""
+        import httpx
+        from httpx import Request, Response
+
+        limiter = GlobalRateLimiter.get_instance(rate_limit=100, rate_window=60)
+        retry_after_s = 0.05
+        call_count = 0
+        attempt_times: list[float] = []
+
+        async def fail_then_ok():
+            nonlocal call_count
+            call_count += 1
+            attempt_times.append(time.monotonic())
+            if call_count == 1:
+                r = Response(
+                    429,
+                    request=Request("POST", "http://x"),
+                    headers={"Retry-After": str(retry_after_s)},
+                    text="slow",
+                )
+                raise httpx.HTTPStatusError(
+                    "Too Many Requests", request=r.request, response=r
+                )
+            return "ok"
+
+        result = await limiter.execute_with_retry(
+            fail_then_ok, max_retries=1, base_delay=0.01, max_delay=0.01, jitter=0
+        )
+
+        assert result == "ok"
+        assert call_count == 2
+        assert attempt_times[1] - attempt_times[0] >= retry_after_s - 0.01
+
+    @pytest.mark.asyncio
+    async def test_execute_with_retry_floors_429_without_retry_after_to_rate_window(
+        self,
+    ):
+        """429 without Retry-After should wait at least one full rate_window."""
+        import httpx
+        from httpx import Request, Response
+
+        GlobalRateLimiter.reset_instance()
+        rate_window = 0.4
+        limiter = GlobalRateLimiter.get_instance(
+            rate_limit=100, rate_window=rate_window
+        )
+
+        call_count = 0
+        attempt_times: list[float] = []
+
+        async def fail_then_ok():
+            nonlocal call_count
+            call_count += 1
+            attempt_times.append(time.monotonic())
+            if call_count == 1:
+                r = Response(429, request=Request("POST", "http://x"), text="slow")
+                raise httpx.HTTPStatusError(
+                    "Too Many Requests", request=r.request, response=r
+                )
+            return "ok"
+
+        result = await limiter.execute_with_retry(
+            fail_then_ok, max_retries=1, base_delay=0.01, max_delay=0.05, jitter=0
+        )
+
+        assert result == "ok"
+        assert call_count == 2
+        # The retry must respect the rate window even though base_delay/max_delay
+        # would otherwise schedule a much shorter wait.
+        assert attempt_times[1] - attempt_times[0] >= rate_window - 0.05
+
+    @pytest.mark.asyncio
+    async def test_execute_with_retry_uses_exponential_backoff_when_no_retry_after_for_5xx(
+        self,
+    ):
+        """Upstream 5xx without Retry-After is not forced to the rate window floor."""
+        import httpx
+        from httpx import Request, Response
+
+        GlobalRateLimiter.reset_instance()
+        rate_window = 1.0
+        limiter = GlobalRateLimiter.get_instance(
+            rate_limit=100, rate_window=rate_window
+        )
+
+        call_count = 0
+        attempt_times: list[float] = []
+
+        async def fail_then_ok():
+            nonlocal call_count
+            call_count += 1
+            attempt_times.append(time.monotonic())
+            if call_count == 1:
+                r = Response(503, request=Request("POST", "http://x"), text="busy")
+                raise httpx.HTTPStatusError(
+                    "Service Unavailable", request=r.request, response=r
+                )
+            return "ok"
+
+        result = await limiter.execute_with_retry(
+            fail_then_ok, max_retries=1, base_delay=0.01, max_delay=0.05, jitter=0
+        )
+
+        assert result == "ok"
+        assert call_count == 2
+        # 5xx without Retry-After should use only the exponential backoff
+        # (well below the configured rate_window).
+        assert attempt_times[1] - attempt_times[0] < rate_window / 2
+
+    def test_retry_after_delay_parses_http_date(self):
+        """OpenAI RateLimitError Retry-After dates are parsed as seconds to wait."""
+        import openai
+        from httpx import Request, Response
+
+        now = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
+        retry_after_s = 2.0
+        retry_after_date = format_datetime(
+            now + timedelta(seconds=retry_after_s), usegmt=True
+        )
+        exc = openai.RateLimitError(
+            "rate limited",
+            response=Response(
+                429,
+                request=Request("POST", "http://x"),
+                headers={"Retry-After": retry_after_date},
+            ),
+            body={},
+        )
+
+        assert retry_after_delay(exc, now=now) == pytest.approx(retry_after_s)
 
     @pytest.mark.parametrize("status_code", [500, 502, 503, 504])
     @pytest.mark.asyncio

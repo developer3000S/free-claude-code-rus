@@ -15,16 +15,21 @@ if __name__ == "__main__":
     import uvicorn
 
     from cli.process_registry import kill_all_best_effort
+    from config.logging_config import install_uvicorn_access_log_filter
     from config.settings import get_settings
 
     settings = get_settings()
     try:
+        # Hide noisy HEAD / and HEAD /health liveness probes while keeping the
+        # rest of uvicorn's access log visible on stdout.
+        install_uvicorn_access_log_filter()
         # timeout_graceful_shutdown ensures uvicorn doesn't hang on task cleanup.
         uvicorn.run(
             app,
             host=settings.host,
             port=settings.port,
             log_level="debug",
+            access_log=True,
             timeout_graceful_shutdown=5,
         )
     finally:

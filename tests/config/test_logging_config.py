@@ -6,7 +6,11 @@ from pathlib import Path
 
 from loguru import logger
 
-from config.logging_config import configure_logging
+from config.logging_config import (
+    HideProbeAccessLog,
+    configure_logging,
+    install_uvicorn_access_log_filter,
+)
 
 
 def test_configure_logging_creates_parent_directories(tmp_path) -> None:
@@ -101,3 +105,80 @@ def test_httpx_resets_to_notset_when_verbose_third_party(tmp_path) -> None:
     log_file = str(tmp_path / "verbose.log")
     configure_logging(log_file, force=True, verbose_third_party=True)
     assert logging.getLogger("httpx").level == logging.NOTSET
+
+
+def _access_record(method: str, path: str) -> logging.LogRecord:
+    """Build a uvicorn-style access log record for filter inspection."""
+    return logging.LogRecord(
+        name="uvicorn.access",
+        level=logging.INFO,
+        pathname=__file__,
+        lineno=1,
+        msg='%s - "%s %s HTTP/%s" %d',
+        args=("127.0.0.1:1234", method, path, "1.1", 200),
+        exc_info=None,
+    )
+
+
+def test_hide_probe_access_log_drops_head_root() -> None:
+    """HEAD / preflight probes are filtered out."""
+    flt = HideProbeAccessLog()
+    assert flt.filter(_access_record("HEAD", "/")) is False
+
+
+def test_hide_probe_access_log_drops_head_health() -> None:
+    """HEAD /health probes are filtered out."""
+    flt = HideProbeAccessLog()
+    assert flt.filter(_access_record("HEAD", "/health")) is False
+
+
+def test_hide_probe_access_log_drops_head_health_with_trailing_slash() -> None:
+    """Trailing slashes on probe paths still match the filter."""
+    flt = HideProbeAccessLog()
+    assert flt.filter(_access_record("HEAD", "/health/")) is False
+
+
+def test_hide_probe_access_log_keeps_get_requests() -> None:
+    """GET /admin and other real traffic must remain visible."""
+    flt = HideProbeAccessLog()
+    assert flt.filter(_access_record("GET", "/admin")) is True
+    assert flt.filter(_access_record("GET", "/")) is True
+
+
+def test_hide_probe_access_log_keeps_head_to_other_paths() -> None:
+    """HEAD requests to non-probe paths are still logged."""
+    flt = HideProbeAccessLog()
+    assert flt.filter(_access_record("HEAD", "/v1/messages")) is True
+
+
+def test_hide_probe_access_log_tolerates_unexpected_args() -> None:
+    """Records with non-tuple or short args are kept untouched."""
+    flt = HideProbeAccessLog()
+    record = logging.LogRecord(
+        name="uvicorn.access",
+        level=logging.INFO,
+        pathname=__file__,
+        lineno=1,
+        msg="opaque",
+        args=None,
+        exc_info=None,
+    )
+    assert flt.filter(record) is True
+
+
+def test_install_uvicorn_access_log_filter_is_idempotent() -> None:
+    """Installing the filter twice does not duplicate it on the uvicorn logger."""
+    access_logger = logging.getLogger("uvicorn.access")
+    original = [
+        f for f in access_logger.filters if not isinstance(f, HideProbeAccessLog)
+    ]
+    access_logger.filters = list(original)
+    try:
+        install_uvicorn_access_log_filter()
+        install_uvicorn_access_log_filter()
+        installed = [
+            f for f in access_logger.filters if isinstance(f, HideProbeAccessLog)
+        ]
+        assert len(installed) == 1
+    finally:
+        access_logger.filters = list(original)
