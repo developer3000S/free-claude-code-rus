@@ -1,0 +1,201 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Métricas de Similitud Schema",
+  "description": "Esquema para el sistema de puntuación cuantitativa de similitud visual (0-100 puntos)",
+  "type": "object",
+  "required": ["timestamp", "lenguaje", "puntuacion_total"],
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp ISO 8601 de la evaluación"
+    },
+    "lenguaje": {
+      "type": "string",
+      "enum": ["tikz", "python", "r"],
+      "description": "Lenguaje evaluado"
+    },
+    "iteracion": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Número de iteración actual"
+    },
+    "puntuacion_total": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Puntuación total de similitud (suma de todas las categorías)"
+    },
+    "categorias": {
+      "type": "object",
+      "required": ["colores", "posiciones", "valores", "proporciones", "estilos", "elementos"],
+      "properties": {
+        "colores": {
+          "type": "object",
+          "properties": {
+            "puntuacion": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 20,
+              "description": "Puntuación de colores (0-20 puntos)"
+            },
+            "detalles": {
+              "type": "string",
+              "description": "Detalles de la evaluación de colores"
+            },
+            "criterio_aplicado": {
+              "type": "string",
+              "enum": [
+                "todos_coinciden_exactamente",
+                "colores_similares",
+                "algunos_incorrectos",
+                "muy_diferentes",
+                "completamente_incorrectos"
+              ]
+            }
+          }
+        },
+        "posiciones": {
+          "type": "object",
+          "properties": {
+            "puntuacion": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 20,
+              "description": "Puntuación de posiciones y coordenadas (0-20 puntos)"
+            },
+            "detalles": {
+              "type": "string",
+              "description": "Detalles de la evaluación de posiciones"
+            },
+            "criterio_aplicado": {
+              "type": "string",
+              "enum": [
+                "todas_exactas",
+                "diferencias_menores_5pct",
+                "diferencias_5_10pct",
+                "diferencias_10_20pct",
+                "diferencias_mayores_20pct"
+              ]
+            }
+          }
+        },
+        "valores": {
+          "type": "object",
+          "properties": {
+            "puntuacion": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 20,
+              "description": "Puntuación de valores numéricos (0-20 puntos)"
+            },
+            "detalles": {
+              "type": "string",
+              "description": "Detalles de la evaluación de valores"
+            },
+            "criterio_aplicado": {
+              "type": "string",
+              "enum": [
+                "todos_correctos",
+                "1_2_incorrectos",
+                "3_4_incorrectos",
+                "5_mas_incorrectos",
+                "valores_criticos_incorrectos"
+              ]
+            }
+          }
+        },
+        "proporciones": {
+          "type": "object",
+          "properties": {
+            "puntuacion": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 15,
+              "description": "Puntuación de proporciones y escalas (0-15 puntos)"
+            },
+            "detalles": {
+              "type": "string",
+              "description": "Detalles de la evaluación de proporciones"
+            },
+            "criterio_aplicado": {
+              "type": "string",
+              "enum": [
+                "proporciones_perfectas",
+                "diferencias_menores",
+                "diferencias_moderadas",
+                "proporciones_incorrectas"
+              ]
+            }
+          }
+        },
+        "estilos": {
+          "type": "object",
+          "properties": {
+            "puntuacion": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 15,
+              "description": "Puntuación de estilos (0-15 puntos)"
+            },
+            "detalles": {
+              "type": "string",
+              "description": "Detalles de la evaluación de estilos"
+            },
+            "criterio_aplicado": {
+              "type": "string",
+              "enum": [
+                "todos_coinciden",
+                "estilos_similares",
+                "algunos_incorrectos",
+                "muy_diferentes"
+              ]
+            }
+          }
+        },
+        "elementos": {
+          "type": "object",
+          "properties": {
+            "puntuacion": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 10,
+              "description": "Puntuación de elementos presentes (0-10 puntos)"
+            },
+            "detalles": {
+              "type": "string",
+              "description": "Detalles de la evaluación de elementos"
+            },
+            "criterio_aplicado": {
+              "type": "string",
+              "enum": [
+                "todos_presentes",
+                "1_faltante_extra",
+                "2_3_faltantes_extra",
+                "4_mas_faltantes_extra"
+              ]
+            },
+            "elementos_faltantes": {
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "elementos_extra": {
+              "type": "array",
+              "items": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "recomendacion": {
+      "type": "string",
+      "enum": ["validar", "considerar_validar", "iterar", "regenerar"],
+      "description": "Recomendación basada en la puntuación total"
+    },
+    "justificacion": {
+      "type": "string",
+      "description": "Justificación de la recomendación"
+    }
+  }
+}
+

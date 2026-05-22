@@ -1,0 +1,160 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Workflow State Schema",
+  "description": "Esquema para el estado persistente del workflow de Graficador-Experto",
+  "type": "object",
+  "required": ["version", "timestamp_inicio", "fase_actual"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Versión del esquema de estado",
+      "default": "1.0"
+    },
+    "timestamp_inicio": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp ISO 8601 del inicio del workflow"
+    },
+    "timestamp_ultima_actualizacion": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp ISO 8601 de la última actualización"
+    },
+    "imagen_original": {
+      "type": "string",
+      "description": "Ruta a la imagen original analizada",
+      "default": "outputs/original.png"
+    },
+    "fase_actual": {
+      "type": "string",
+      "enum": ["analisis", "tikz_iteracion", "tikz_validado", "python_iteracion", "python_validado", "r_iteracion", "r_validado", "completado"],
+      "description": "Fase actual del workflow"
+    },
+    "analisis_completado": {
+      "type": "boolean",
+      "description": "Indica si el análisis inicial está completo",
+      "default": false
+    },
+    "tikz": {
+      "type": "object",
+      "properties": {
+        "estado": {
+          "type": "string",
+          "enum": ["pendiente", "en_iteracion", "validado"],
+          "default": "pendiente"
+        },
+        "iteracion_actual": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "similitud_actual": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 0
+        },
+        "similitud_historico": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "description": "Historial de similitudes por iteración"
+        },
+        "timestamp_inicio": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp de inicio de fase TikZ"
+        },
+        "timestamp_validacion": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp de validación final"
+        }
+      }
+    },
+    "python": {
+      "type": "object",
+      "properties": {
+        "estado": {
+          "type": "string",
+          "enum": ["pendiente", "en_iteracion", "validado"],
+          "default": "pendiente"
+        },
+        "iteracion_actual": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "similitud_actual": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 0
+        },
+        "similitud_historico": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "description": "Historial de similitudes por iteración"
+        },
+        "timestamp_inicio": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp de inicio de fase Python"
+        },
+        "timestamp_validacion": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp de validación final"
+        }
+      }
+    },
+    "r": {
+      "type": "object",
+      "properties": {
+        "estado": {
+          "type": "string",
+          "enum": ["pendiente", "en_iteracion", "validado"],
+          "default": "pendiente"
+        },
+        "iteracion_actual": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "similitud_actual": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 0
+        },
+        "similitud_historico": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "description": "Historial de similitudes por iteración"
+        },
+        "timestamp_inicio": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp de inicio de fase R"
+        },
+        "timestamp_validacion": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp de validación final"
+        }
+      }
+    }
+  }
+}
+

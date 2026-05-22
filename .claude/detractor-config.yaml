@@ -1,0 +1,207 @@
+# Configuración del Skill Detractor
+# Archivo: .claude/detractor-config.yaml
+# Versión: 1.2
+# Fecha: 2026-02-13
+# Cambios v1.2: 8 dominios obligatorios (+coherencia_semantica)
+# Cambios v1.1: 7 dominios obligatorios (antes 4)
+
+# =============================================================================
+# ACTIVACIÓN AUTOMÁTICA
+# =============================================================================
+# Define cuándo el detractor se ejecuta automáticamente (sin invocación manual)
+
+activacion:
+  # Después de /generar-schoice o /generar-cloze
+  post_generacion: true
+
+  # En FASE 2C del ciclo de validación (después de preview visual)
+  fase_2c: true
+
+  # Antes de /promover-ejercicio (bloquea si hay objeciones críticas/altas)
+  pre_promocion: true
+
+  # Después de /validar-pedagogico (confronta recomendaciones)
+  post_validacion_pedagogico: true
+
+# =============================================================================
+# UMBRALES DE SEVERIDAD
+# =============================================================================
+# Controla qué objeciones se reportan y cuáles bloquean el flujo
+
+umbrales:
+  # Severidad mínima para reportar (critica|alta|media|baja)
+  # Objeciones por debajo de este nivel se ignoran
+  severidad_minima: media
+
+  # Nivel mínimo de fuente requerido para objetar (1-4)
+  # 1 = Docs oficiales/RFCs/papers
+  # 2 = Best practices core teams
+  # 3 = Blogs maintainers (requiere corroboración)
+  # 4 = Opiniones (nunca suficiente)
+  fuente_minima: 2
+
+  # Máximo de objeciones en modo inline
+  max_objeciones_inline: 3
+
+  # Máximo de objeciones en modo auditoría
+  max_objeciones_auditoria: 10
+
+# =============================================================================
+# DOMINIOS OBLIGATORIOS
+# =============================================================================
+# Dominios que SIEMPRE se revisan en cada auditoría
+
+dominios_obligatorios:
+  # Validación de código R-exams (exshuffle, metadatos, estructura)
+  - codigo_rexams
+
+  # Estructura pedagógica (Progressive Disclosure, metacognición, DOK/Bloom)
+  - pedagogico
+
+  # Coherencia visual (gráfico-texto, etiquetas, escalas)
+  - visual
+
+  # Gramática y ortografía (tildes, redacción, terminología)
+  - gramatica
+
+  # Coherencia matemática (fórmulas, cálculos, proporciones, distractores)
+  - coherencia_matematica
+
+  # ICFES metacognitivo (Progressive Disclosure, pool errores, DOK/Bloom/SOLO)
+  - icfes_metacognitivo
+
+  # Testing y regresión (tests unitarios, git hooks, CI/CD)
+  - testing
+
+  # Coherencia semántica (Nivel 4): descripción del error ↔ datos generados
+  - coherencia_semantica
+
+# =============================================================================
+# DOMINIOS OPCIONALES
+# =============================================================================
+# Dominios que se pueden activar según el contexto
+
+dominios_opcionales:
+  # Revisión de seguridad (OWASP si aplica)
+  seguridad: false
+
+  # Revisión de rendimiento (complejidad, optimizaciones)
+  rendimiento: false
+
+  # Revisión de accesibilidad (si hay componentes visuales)
+  accesibilidad: false
+
+# =============================================================================
+# FUENTES DE VERDAD LOCALES
+# =============================================================================
+# Archivos/directorios que el detractor consulta como fuente autoritativa
+
+fuentes_locales:
+  # Reglas del sistema (Nivel 1)
+  - .claude/rules/
+
+  # Documentación del sistema (Nivel 1)
+  - .claude/docs/
+
+  # Ejemplos funcionales = FUENTE DE VERDAD ABSOLUTA (Nivel 1)
+  - A-Produccion/Ejemplos-Funcionales-Rmd/
+
+  # Skills como referencia (Nivel 2)
+  - .claude/skills/
+
+# =============================================================================
+# FUENTES DE VERDAD REMOTAS
+# =============================================================================
+# URLs que el detractor puede consultar via WebFetch/WebSearch
+
+fuentes_remotas:
+  # R-exams documentación oficial
+  r_exams: https://www.r-exams.org/
+
+  # CRAN vignettes
+  cran: https://cran.r-project.org/web/packages/exams/
+
+  # ICFES Marco Conceptual
+  icfes: https://www.icfes.gov.co/
+
+# =============================================================================
+# BLOQUEOS
+# =============================================================================
+# Controla qué severidades bloquean el flujo de trabajo
+
+bloqueos:
+  # Bloquear si hay objeciones críticas
+  critica: true
+
+  # Bloquear si hay objeciones altas
+  alta: true
+
+  # NO bloquear por objeciones medias (solo reportar)
+  media: false
+
+  # NUNCA bloquear por objeciones bajas
+  baja: false
+
+# =============================================================================
+# IGNORAR
+# =============================================================================
+# Patrones de archivos/directorios que el detractor NO revisa
+
+ignorar:
+  # Archivos generados automáticamente
+  - "*.generated.*"
+
+  # Directorios de salida
+  - output_*/
+  - salida/
+
+  # Archivos temporales
+  - "*.tmp"
+  - "*.bak"
+
+  # Tests (tienen su propio sistema de validación)
+  - tests/fixtures/
+
+# =============================================================================
+# FORMATO DE SALIDA
+# =============================================================================
+# Personalización del formato de reportes
+
+formato:
+  # Incluir citas textuales de fuentes
+  incluir_citas: true
+
+  # Incluir código de ejemplo en alternativas
+  incluir_codigo: true
+
+  # Nivel de detalle (compacto|normal|detallado)
+  nivel_detalle: normal
+
+  # Idioma de reportes
+  idioma: es
+
+# =============================================================================
+# INTEGRACIÓN CON OTROS SKILLS
+# =============================================================================
+# Cómo el detractor interactúa con otros skills del sistema
+
+integracion:
+  # Validar recomendaciones de /validar-pedagogico
+  validar_pedagogico: true
+
+  # Revisar ejercicios de /generar-schoice
+  generar_schoice: true
+
+  # Revisar ejercicios de /generar-cloze
+  generar_cloze: true
+
+  # Bloquear /promover-ejercicio si hay objeciones
+  promover_ejercicio: true
+
+# =============================================================================
+# NOTAS
+# =============================================================================
+# - Este archivo es leído automáticamente por el skill detractor
+# - Cambios requieren reinicio de sesión para tomar efecto
+# - Los valores por defecto están optimizados para el workflow ICFES
+# - Para desactivar el detractor temporalmente, usar activacion: false (NO RECOMENDADO)

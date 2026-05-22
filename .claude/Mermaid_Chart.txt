@@ -1,0 +1,435 @@
+graph TD
+    REGLAS[📋 REGLAS MODULARES OBLIGATORIAS<br/>.claude/rules/<br/>• flujo-b-obligatorio.md<br/>• graficador-secuencial.md<br/>• ciclo-validacion.md<br/>• codigo-rmd.md<br/>• documentacion-verificada.md]
+
+    REGLAS_NUEVAS[⛔ REGLAS CRITICAS v2.5<br/>• Flujo B OBLIGATORIO si hay graficos<br/>• Proceso SECUENCIAL: TikZ→Python→R<br/>• 5 Coherencias antes de aprobar<br/>• Bloqueo sin completar Flujo B<br/>• REPETIR CICLO después de cada cambio<br/>• Validación Visual Iterativa OBLIGATORIA]
+
+    A[ENTRADA: Imagen ICFES Matematicas] --> ANALISIS_VISUAL[🔍 ANALISIS VISUAL INICIAL]
+
+    REGLAS -.Gobierna todo el flujo.-> A
+    REGLAS -.Gobierna todo el flujo.-> FASE1
+    REGLAS -.Gobierna todo el flujo.-> FASE2
+    REGLAS -.Gobierna todo el flujo.-> FASE3
+    REGLAS_NUEVAS -.OBLIGATORIO.-> DETECTAR
+
+    %% ============================================
+    %% ANÁLISIS VISUAL INICIAL - DETECCIÓN DE GRÁFICOS
+    %% ============================================
+    ANALISIS_VISUAL --> ENUNCIADO[Análisis Visual Enunciado]
+    
+    ENUNCIADO --> ENUNCIADO_GRAF_MAT[Con Gráficos<br/>Matemáticos]
+    ENUNCIADO --> ENUNCIADO_GRAF_NO_MAT[Con Gráficos<br/>No Matemáticos]
+    ENUNCIADO --> ENUNCIADO_SIN_GRAF[Sin Gráficos]
+    
+    ENUNCIADO_GRAF_MAT --> OPCIONES[Análisis Opciones de Respuesta]
+    ENUNCIADO_GRAF_NO_MAT --> OPCIONES
+    ENUNCIADO_SIN_GRAF --> OPCIONES
+    
+    OPCIONES --> OPCIONES_TEXTO[Opciones<br/>Textuales/Numéricas]
+    OPCIONES --> OPCIONES_GRAF[Opciones con<br/>Gráficos]
+    OPCIONES --> OPCIONES_MIXTAS[Opciones Mixtas]
+    
+    %% ============================================
+    %% DECISIÓN: ¿ACTIVAR GRAFICADOR-EXPERTO?
+    %% ============================================
+    ENUNCIADO_GRAF_MAT --> DETECTAR{¿Aplicar<br/>Graficador-Experto?}
+    ENUNCIADO_GRAF_NO_MAT --> DETECTAR
+    OPCIONES_GRAF -->|SÍ| DETECTAR
+    OPCIONES_MIXTAS -->|SÍ| DETECTAR
+    
+    ENUNCIADO_SIN_GRAF -->|NO| CONTINUAR_SIN_GRAF[Continuar sin<br/>Graficador-Experto]
+    OPCIONES_TEXTO -->|NO| CONTINUAR_SIN_GRAF
+    
+    %% ============================================
+    %% FLUJO GRAFICADOR-EXPERTO INTEGRADO
+    %% ============================================
+    DETECTAR -->|SÍ| GRAF_ANALISIS[🔍 ANÁLISIS VISUAL MATEMÁTICO<br/>/analizar-imagen-grafica]
+    
+    GRAF_ANALISIS --> GRAF_CLASIF[Clasificación de Contenido]
+    GRAF_CLASIF --> GRAF_CLASIF1[Geometría]
+    GRAF_CLASIF --> GRAF_CLASIF2[Estadística]
+    GRAF_CLASIF --> GRAF_CLASIF3[Cálculo]
+    GRAF_CLASIF --> GRAF_CLASIF4[Trigonometría]
+    GRAF_CLASIF --> GRAF_CLASIF5[Álgebra]
+    
+    GRAF_ANALISIS --> GRAF_ELEM[Extracción de Elementos]
+    GRAF_ELEM --> GRAF_ELEM1[Ejes Coordenados]
+    GRAF_ELEM --> GRAF_ELEM2[Gráficas y Curvas]
+    GRAF_ELEM --> GRAF_ELEM3[Figuras Geométricas]
+    GRAF_ELEM --> GRAF_ELEM4[Anotaciones y Etiquetas]
+    
+    GRAF_ANALISIS --> GRAF_ESTILOS[Análisis de Estilos]
+    GRAF_ESTILOS --> GRAF_ESTILOS1[Colores RGB/Hex]
+    GRAF_ESTILOS --> GRAF_ESTILOS2[Estilos de Línea]
+    GRAF_ESTILOS --> GRAF_ESTILOS3[Tipografía]
+    
+    GRAF_ANALISIS --> GRAF_COMPLEJ[Evaluación de Complejidad]
+    GRAF_COMPLEJ --> GRAF_COMPLEJ1[Nivel Bajo]
+    GRAF_COMPLEJ --> GRAF_COMPLEJ2[Nivel Medio]
+    GRAF_COMPLEJ --> GRAF_COMPLEJ3[Nivel Alto]
+    
+    GRAF_COMPLEJ --> GRAF_REPORTE[📋 REPORTE ESTRUCTURADO]
+    GRAF_REPORTE --> GRAF_GUARDAR[💾 Guardar Análisis]
+    GRAF_GUARDAR --> GRAF_JSON1[analisis_inicial.json]
+    GRAF_GUARDAR --> GRAF_JSON2[workflow_state.json]
+    GRAF_GUARDAR --> GRAF_MD[reporte_matematico.md]
+    
+    %% ============================================
+    %% FLUJO SECUENCIAL OBLIGATORIO: TikZ → Python → R
+    %% ============================================
+    GRAF_GUARDAR --> GRAF_SEC_INICIO[⚠️ INICIO PROCESO SECUENCIAL<br/>Ver: graficador-secuencial.md]
+
+    %% PASO 1: TikZ (PRIMERO - OBLIGATORIO)
+    GRAF_SEC_INICIO --> GRAF_TIKZ[🎨 1. TIKZ DINAMICO DESDE R<br/>/auto-refinar-grafico tikz]
+    GRAF_TIKZ --> GRAF_TIKZ_ITER[Iterar hasta >=95%]
+    GRAF_TIKZ_ITER --> GRAF_TIKZ_COH[Verificar 5 Coherencias:<br/>Semantica, Visual-Texto,<br/>Matematica, Codigo, General]
+    GRAF_TIKZ_COH --> GRAF_TIKZ_USER{Usuario<br/>Aprueba TikZ?}
+    GRAF_TIKZ_USER -->|NO| GRAF_TIKZ_ITER
+    GRAF_TIKZ_USER -->|SI| GRAF_TIKZ_OK[✅ TikZ APROBADO]
+
+    %% PASO 2: Python (DESPUES de TikZ aprobado)
+    GRAF_TIKZ_OK --> GRAF_PYTHON[🐍 2. PYTHON RETICULATE<br/>/auto-refinar-grafico python]
+    GRAF_PYTHON --> GRAF_PYTHON_ITER[Iterar hasta >=95%]
+    GRAF_PYTHON_ITER --> GRAF_PYTHON_COH[Verificar 5 Coherencias]
+    GRAF_PYTHON_COH --> GRAF_PYTHON_USER{Usuario<br/>Aprueba Python?}
+    GRAF_PYTHON_USER -->|NO| GRAF_PYTHON_ITER
+    GRAF_PYTHON_USER -->|SI| GRAF_PYTHON_OK[✅ Python APROBADO]
+
+    %% PASO 3: R (DESPUES de Python aprobado)
+    GRAF_PYTHON_OK --> GRAF_R[📊 3. R GGPLOT2 NATIVO<br/>/auto-refinar-grafico r]
+    GRAF_R --> GRAF_R_ITER[Iterar hasta >=95%]
+    GRAF_R_ITER --> GRAF_R_COH[Verificar 5 Coherencias]
+    GRAF_R_COH --> GRAF_R_USER{Usuario<br/>Aprueba R?}
+    GRAF_R_USER -->|NO| GRAF_R_ITER
+    GRAF_R_USER -->|SI| GRAF_R_OK[✅ R APROBADO]
+
+    %% PASO 4: Seleccion final del usuario
+    GRAF_R_OK --> GRAF_SELECCION{Usuario Selecciona<br/>Version Final}
+    GRAF_SELECCION -->|TikZ| GRAF_FINAL_TIKZ[Usar TikZ dinamico]
+    GRAF_SELECCION -->|Python| GRAF_FINAL_PY[Usar Python reticulate]
+    GRAF_SELECCION -->|R| GRAF_FINAL_R[Usar R ggplot2]
+
+    GRAF_FINAL_TIKZ --> GRAF_INTEGRAR[💾 Codigo Grafico<br/>Validado y Seleccionado]
+    GRAF_FINAL_PY --> GRAF_INTEGRAR
+    GRAF_FINAL_R --> GRAF_INTEGRAR
+    
+    %% ============================================
+    %% CONTINUACIÓN: ANÁLISIS ICFES (6 DIMENSIONES)
+    %% ============================================
+    CONTINUAR_SIN_GRAF --> B[ANÁLISIS ICFES<br/>6 Dimensiones]
+    GRAF_INTEGRAR --> B
+
+    B --> C1[Nivel de Dificultad]
+    C1 --> C1a[Nivel 1: 0-35 pts]
+    C1 --> C1b[Nivel 2: 36-50 pts]
+    C1 --> C1c[Nivel 3: 51-70 pts]
+    C1 --> C1d[Nivel 4: 71-100 pts]
+
+    B --> C2[Competencia]
+    C2 --> C2a[Interpretación y<br/>Representación 34%]
+    C2 --> C2b[Formulación y<br/>Ejecución 43%]
+    C2 --> C2c[Argumentación 23%]
+
+    B --> C3[Componente]
+    C3 --> C3a[Numérico-Variacional]
+    C3 --> C3b[Geométrico-Métrico]
+    C3 --> C3c[Aleatorio]
+
+    B --> C4[Tipo de Pensamiento]
+    C4 --> C4a[Pensamiento Numérico]
+    C4 --> C4b[Pensamiento Espacial]
+    C4 --> C4c[Pensamiento Métrico]
+    C4 --> C4d[Pensamiento Variacional]
+    C4 --> C4e[Pensamiento Aleatorio]
+
+    B --> C5[Contenido Curricular]
+    C5 --> C5a[Álgebra y Cálculo]
+    C5a --> C5a1[Contenidos Genéricos]
+    C5a --> C5a2[Contenidos No Genéricos]
+    C5 --> C5b[Geometría]
+    C5b --> C5b1[Contenidos Genéricos]
+    C5b --> C5b2[Contenidos No Genéricos]
+    C5 --> C5c[Estadística]
+
+    B --> C6[Eje Axial Disciplinar]
+    C6 --> C6a[Puramente Matemático]
+    C6 --> C6b[Aplicado/Contextualizado]
+
+    B --> D[FORMATO R/EXAMS]
+
+    D --> D1{Tipo de Ejercicio}
+    D1 --> D1a[SCHOICE<br/>Selección Única]
+    D1 --> D1b[CLOZE<br/>Pregunta Compuesta]
+
+    D1a --> G[PLANTILLA FINAL .Rmd]
+    D1b --> G
+    
+    G --> H[OUTPUT: Archivo .Rmd<br/>con Metadatos Completos<br/>+ Código Gráfico Integrado<br/>si aplica]
+
+    %% ============================================
+    %% FASE 1: RENDERIZADO INICIAL OBLIGATORIO
+    %% ============================================
+    H --> FASE1[🔄 FASE 1: RENDERIZADO INICIAL<br/>OBLIGATORIO]
+
+    FASE1 --> I[RENDERIZADO COMPLETO exams2*]
+    I --> I1[exams2html]
+    I --> I2[exams2pdf]
+    I --> I3[exams2docx]
+    I --> I4[exams2nops]
+
+    I1 --> CAP_ERR[📋 CAPTURAR Y REGISTRAR<br/>Errores y Advertencias]
+    I2 --> CAP_ERR
+    I3 --> CAP_ERR
+    I4 --> CAP_ERR
+
+    %% ============================================
+    %% FASE 2: VALIDACIÓN VISUAL Y FUNCIONAL
+    %% ============================================
+    CAP_ERR --> FASE2[🔍 FASE 2: VALIDACIÓN VISUAL<br/>Y FUNCIONAL SISTEMÁTICA]
+
+    FASE2 --> VAL_ALL[INSPECCIÓN SISTEMÁTICA<br/>DE COHERENCIA TOTAL]
+
+    VAL_ALL --> VAL_MAT[✓ Coherencia Matemática]
+    VAL_MAT --> VAL_MAT1[Fórmulas correctas]
+    VAL_MAT --> VAL_MAT2[Cálculos verificados]
+    VAL_MAT --> VAL_MAT3[Respuesta correcta validada]
+
+    VAL_ALL --> VAL_IMG[✓ Coherencia Imagen-Texto]
+    VAL_IMG --> VAL_IMG1[Descripción vs Gráfico]
+    VAL_IMG --> VAL_IMG2[Valores sincronizados]
+    VAL_IMG --> VAL_IMG3[Etiquetas correctas]
+
+    VAL_ALL --> VAL_SEM[✓ Coherencia Semántica<br/>Gramática]
+    VAL_SEM --> VAL_SEM1[Gramática correcta]
+    VAL_SEM --> VAL_SEM2[Concordancia adecuada]
+    VAL_SEM --> VAL_SEM3[Ortografía verificada]
+
+    VAL_ALL --> VAL_COD[✓ Coherencia de Código]
+    VAL_COD --> VAL_COD1[R ↔ Python sincronizado]
+    VAL_COD --> VAL_COD2[R ↔ TikZ sincronizado]
+    VAL_COD --> VAL_COD3[Python ↔ TikZ sincronizado]
+
+    VAL_ALL --> VAL_OUT[✓ Renderizado 4 Formatos]
+    VAL_OUT --> VAL_OUT1[HTML correcto]
+    VAL_OUT --> VAL_OUT2[PDF correcto]
+    VAL_OUT --> VAL_OUT3[DOCX correcto]
+    VAL_OUT --> VAL_OUT4[NOPS correcto]
+
+    VAL_MAT1 --> CONSOLIDAR[CONSOLIDAR<br/>RESULTADOS VALIDACIÓN]
+    VAL_MAT2 --> CONSOLIDAR
+    VAL_MAT3 --> CONSOLIDAR
+    VAL_IMG1 --> CONSOLIDAR
+    VAL_IMG2 --> CONSOLIDAR
+    VAL_IMG3 --> CONSOLIDAR
+    VAL_SEM1 --> CONSOLIDAR
+    VAL_SEM2 --> CONSOLIDAR
+    VAL_SEM3 --> CONSOLIDAR
+    VAL_COD1 --> CONSOLIDAR
+    VAL_COD2 --> CONSOLIDAR
+    VAL_COD3 --> CONSOLIDAR
+    VAL_OUT1 --> CONSOLIDAR
+    VAL_OUT2 --> CONSOLIDAR
+    VAL_OUT3 --> CONSOLIDAR
+    VAL_OUT4 --> CONSOLIDAR
+
+    %% ============================================
+    %% FASE 3: DECISIÓN Y ACCIÓN
+    %% ============================================
+    CONSOLIDAR --> FASE3[⚡ FASE 3: DECISIÓN Y ACCIÓN]
+
+    FASE3 --> K{¿ERRORES<br/>ENCONTRADOS?}
+
+    %% ============================================
+    %% CAMINO SIN ERRORES - DIRECTO A DOCUMENTACIÓN
+    %% ============================================
+    K -->|❌ NO hay errores| DOC_OK[📝 DOCUMENTAR ÉXITO<br/>Y CONTINUAR FLUJO NORMAL]
+    DOC_OK --> M[✅ VALIDACIÓN EXITOSA<br/>Continuar Workflow]
+    M --> N[🚀 PROMOCIÓN A<br/>PRODUCCIÓN]
+
+    %% ============================================
+    %% CAMINO CON ERRORES - CICLO DE CORRECCIÓN
+    %% ============================================
+    K -->|✓ SÍ hay errores| SUBFASE3A[📚 SUBFASE 3A: CORRECCIÓN<br/>BASADA EN EJEMPLOS]
+
+    %% SUBFASE 3A: Consultar ejemplos funcionales
+    SUBFASE3A --> CONSULTAR[🔍 CONSULTAR AUTOMÁTICAMENTE<br/>Ejemplos Funcionales]
+    CONSULTAR --> RUTA_EJ[📁 A-Produccion/<br/>Ejemplos-Funcionales-Rmd/]
+
+    RUTA_EJ --> IDENTIFICAR[🎯 IDENTIFICAR PATRONES<br/>DE SOLUCIÓN]
+    IDENTIFICAR --> ID1[Buscar archivos similares]
+    IDENTIFICAR --> ID2[Extraer patrones exitosos]
+    IDENTIFICAR --> ID3[Analizar estructuras funcionales]
+
+    ID1 --> APLICAR[⚙️ APLICAR CORRECCIONES<br/>Basadas en Ejemplos Validados]
+    ID2 --> APLICAR
+    ID3 --> APLICAR
+
+    %% Clasificación de errores para corrección específica
+    APLICAR --> K1{TIPO DE<br/>ERROR}
+
+    K1 -->|Gráficos| ERR_G[🖼️ ERRORES DE GRÁFICOS]
+    ERR_G --> ERR_G1[Gráficas no visualizadas]
+    ERR_G --> ERR_G2[Gráficas solapadas]
+    ERR_G --> ERR_G3[Renderizado incorrecto]
+    ERR_G --> ERR_G4[Tamaño inadecuado]
+
+    ERR_G1 --> L1[Verificar include_tikz<br/>y rutas de imagen]
+    ERR_G2 --> L2[Ajustar posicionamiento<br/>y márgenes]
+    ERR_G3 --> L3[Revisar código TikZ<br/>o Python/R]
+    ERR_G4 --> L4[Ajustar scale, width<br/>height en chunk]
+
+    L1 --> L[✏️ CORREGIR ERRORES<br/>EN ARCHIVO .Rmd]
+    L2 --> L
+    L3 --> L
+    L4 --> L
+
+    K1 -->|Texto/Formato| ERR_T[📝 ERRORES DE TEXTO]
+    ERR_T --> ERR_T1[LaTeX no compila]
+    ERR_T --> ERR_T2[Encoding incorrecto]
+    ERR_T --> ERR_T3[Metadatos faltantes]
+
+    ERR_T1 --> L
+    ERR_T2 --> L
+    ERR_T3 --> L
+
+    K1 -->|Estructura| ERR_S[🏗️ ERRORES ESTRUCTURA]
+    ERR_S --> ERR_S1[Opciones incorrectas]
+    ERR_S --> ERR_S2[Solución no coincide]
+
+    ERR_S1 --> L
+    ERR_S2 --> L
+
+    K1 -->|Coherencia| ERR_C[🔗 ERRORES DE COHERENCIA]
+    ERR_C --> ERR_C1[Coherencia matemática]
+    ERR_C --> ERR_C2[Coherencia imagen-texto]
+    ERR_C --> ERR_C3[Coherencia de código]
+
+    ERR_C1 --> L5[Revisar fórmulas,<br/>cálculos y resultados]
+    ERR_C2 --> L6[Alinear descripción<br/>con gráfico generado]
+    ERR_C3 --> L7[Sincronizar variables<br/>R/Python/TikZ]
+
+    L5 --> L
+    L6 --> L
+    L7 --> L
+
+    %% ============================================
+    %% SUBFASE 3B: CICLO DE REVALIDACIÓN
+    %% ============================================
+    L --> SUBFASE3B[🔄 SUBFASE 3B: CICLO DE<br/>REVALIDACIÓN OBLIGATORIA]
+
+    SUBFASE3B --> REVAL_INFO[⚠️ VOLVER AUTOMÁTICAMENTE<br/>A FASE 1 - Renderizado Inicial]
+    REVAL_INFO --> FASE1
+
+    %% ============================================
+    %% SUBFASE 3C: GESTIÓN DE RESULTADOS
+    %% ============================================
+    %% Nota: Este flujo se ejecuta cuando K = NO después de una corrección
+
+    DOC_OK --> CHECK_PREV{¿HUBO<br/>CORRECCIÓN<br/>PREVIA?}
+
+    CHECK_PREV -->|SÍ| SUBFASE3C[📊 SUBFASE 3C: GESTIÓN<br/>DE RESULTADOS]
+    CHECK_PREV -->|NO| M
+
+    SUBFASE3C --> DOC_ERR[📋 DOCUMENTAR ERROR<br/>Y SOLUCIÓN APLICADA]
+    DOC_ERR --> DOC_PATH[📁 .claude/docs/<br/>patrones-errores-conocidos.md]
+    DOC_PATH --> DOC_CONTENT[Registrar:<br/>• Error encontrado<br/>• Solución aplicada<br/>• Ejemplo funcional usado]
+    DOC_CONTENT --> M
+
+    %% ============================================
+    %% ESTILOS - FASES PRINCIPALES
+    %% ============================================
+    style A fill:#e1f5ff
+    style ANALISIS_VISUAL fill:#fff4e6,stroke:#e65100,stroke-width:3px
+    style B fill:#fff4e6
+    style D fill:#e8f5e9
+    style D1 fill:#fff9c4
+    style G fill:#f3e5f5
+    style H fill:#ffebee
+
+    %% Estilos Análisis Visual Inicial
+    style ENUNCIADO fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    style OPCIONES fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    style DETECTAR fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    style CONTINUAR_SIN_GRAF fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    
+    %% Estilos Flujo Graficador-Experto SECUENCIAL
+    style GRAF_ANALISIS fill:#fff4e6,stroke:#e65100,stroke-width:3px
+    style GRAF_REPORTE fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style GRAF_GUARDAR fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    style GRAF_SEC_INICIO fill:#ff5722,color:#fff,stroke:#d84315,stroke-width:3px
+
+    %% TikZ (Paso 1)
+    style GRAF_TIKZ fill:#ffebee,stroke:#c62828,stroke-width:3px
+    style GRAF_TIKZ_ITER fill:#ffcdd2,stroke:#e53935,stroke-width:2px
+    style GRAF_TIKZ_COH fill:#ef9a9a,stroke:#e53935,stroke-width:2px
+    style GRAF_TIKZ_USER fill:#fce4ec,stroke:#c2185b,stroke-width:3px
+    style GRAF_TIKZ_OK fill:#43a047,color:#fff,stroke:#1b5e20,stroke-width:3px
+
+    %% Python (Paso 2)
+    style GRAF_PYTHON fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style GRAF_PYTHON_ITER fill:#c8e6c9,stroke:#43a047,stroke-width:2px
+    style GRAF_PYTHON_COH fill:#a5d6a7,stroke:#43a047,stroke-width:2px
+    style GRAF_PYTHON_USER fill:#dcedc8,stroke:#7cb342,stroke-width:3px
+    style GRAF_PYTHON_OK fill:#43a047,color:#fff,stroke:#1b5e20,stroke-width:3px
+
+    %% R (Paso 3)
+    style GRAF_R fill:#e3f2fd,stroke:#1565c0,stroke-width:3px
+    style GRAF_R_ITER fill:#bbdefb,stroke:#1976d2,stroke-width:2px
+    style GRAF_R_COH fill:#90caf9,stroke:#1976d2,stroke-width:2px
+    style GRAF_R_USER fill:#e1f5fe,stroke:#0288d1,stroke-width:3px
+    style GRAF_R_OK fill:#43a047,color:#fff,stroke:#1b5e20,stroke-width:3px
+
+    %% Seleccion final
+    style GRAF_SELECCION fill:#ffc107,stroke:#ff8f00,stroke-width:3px
+    style GRAF_FINAL_TIKZ fill:#ffebee,stroke:#c62828,stroke-width:2px
+    style GRAF_FINAL_PY fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style GRAF_FINAL_R fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    style GRAF_INTEGRAR fill:#81c784,stroke:#2e7d32,stroke-width:2px
+
+    %% Reglas nuevas
+    style REGLAS_NUEVAS fill:#f44336,color:#fff,stroke:#b71c1c,stroke-width:3px,stroke-dasharray: 5 5
+
+    %% Estilos Fase 1
+    style FASE1 fill:#1e88e5,color:#fff,stroke:#0d47a1,stroke-width:3px
+    style I fill:#e3f2fd
+    style CAP_ERR fill:#bbdefb,stroke:#1976d2,stroke-width:2px
+
+    %% Estilos Fase 2
+    style FASE2 fill:#7b1fa2,color:#fff,stroke:#4a148c,stroke-width:3px
+    style VAL_ALL fill:#e1bee7,stroke:#7b1fa2,stroke-width:2px
+    style VAL_MAT fill:#f3e5f5
+    style VAL_IMG fill:#f3e5f5
+    style VAL_SEM fill:#f3e5f5
+    style VAL_COD fill:#f3e5f5
+    style VAL_OUT fill:#f3e5f5
+    style CONSOLIDAR fill:#ce93d8,stroke:#7b1fa2,stroke-width:2px
+
+    %% Estilos Fase 3
+    style FASE3 fill:#f57c00,color:#fff,stroke:#e65100,stroke-width:3px
+    style K fill:#fce4ec,stroke:#c2185b,stroke-width:3px
+
+    %% Estilos Subfase 3A
+    style SUBFASE3A fill:#ff7043,color:#fff,stroke:#d84315,stroke-width:2px
+    style CONSULTAR fill:#ffccbc,stroke:#e64a19,stroke-width:2px
+    style RUTA_EJ fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
+    style IDENTIFICAR fill:#ffccbc
+    style APLICAR fill:#ffab91,stroke:#e64a19,stroke-width:2px
+    style K1 fill:#fce4ec
+
+    %% Estilos Subfase 3B
+    style SUBFASE3B fill:#d32f2f,color:#fff,stroke:#b71c1c,stroke-width:3px
+    style REVAL_INFO fill:#ffcdd2,stroke:#d32f2f,stroke-width:2px
+
+    %% Estilos Subfase 3C
+    style SUBFASE3C fill:#388e3c,color:#fff,stroke:#1b5e20,stroke-width:2px
+    style DOC_ERR fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    style DOC_PATH fill:#a5d6a7
+    style DOC_CONTENT fill:#81c784
+    style CHECK_PREV fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+
+    %% Estilos Éxito
+    style DOC_OK fill:#66bb6a,color:#fff,stroke:#2e7d32,stroke-width:2px
+    style M fill:#43a047,color:#fff,stroke:#1b5e20,stroke-width:3px
+    style N fill:#2e7d32,color:#fff,stroke:#1b5e20,stroke-width:3px
+
+    %% Estilos Reglas Modulares
+    style REGLAS fill:#ffd54f,stroke:#f57f17,stroke-width:3px,stroke-dasharray: 5 5

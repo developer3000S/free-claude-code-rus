@@ -1,0 +1,195 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Análisis Inicial Schema",
+  "description": "Esquema para el análisis inicial estructurado y reutilizable de la imagen matemática",
+  "type": "object",
+  "required": ["timestamp", "tipo_contenido"],
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp ISO 8601 del análisis"
+    },
+    "tipo_contenido": {
+      "type": "string",
+      "enum": ["geometria", "estadistica", "calculo", "trigonometria", "algebra", "otro"],
+      "description": "Tipo de contenido matemático identificado"
+    },
+    "complejidad": {
+      "type": "string",
+      "enum": ["baja", "media", "alta"],
+      "description": "Nivel de complejidad del contenido"
+    },
+    "elementos_visuales": {
+      "type": "object",
+      "properties": {
+        "ejes": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "object",
+              "properties": {
+                "min": {"type": "number"},
+                "max": {"type": "number"},
+                "etiqueta": {"type": "string"},
+                "unidades": {"type": "string"},
+                "escala": {"type": "string"}
+              }
+            },
+            "y": {
+              "type": "object",
+              "properties": {
+                "min": {"type": "number"},
+                "max": {"type": "number"},
+                "etiqueta": {"type": "string"},
+                "unidades": {"type": "string"},
+                "escala": {"type": "string"}
+              }
+            }
+          }
+        },
+        "funciones": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "tipo": {
+                "type": "string",
+                "enum": ["lineal", "cuadratica", "cubica", "trigonometrica", "exponencial", "logaritmica", "racional", "otro"]
+              },
+              "ecuacion": {"type": "string"},
+              "color": {"type": "string"},
+              "estilo": {
+                "type": "string",
+                "enum": ["solida", "punteada", "discontinua", "punto-línea"]
+              },
+              "grosor": {"type": "number"}
+            }
+          }
+        },
+        "puntos_especiales": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "nombre": {"type": "string"},
+              "coord": {
+                "type": "array",
+                "items": {"type": "number"},
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "marcador": {
+                "type": "string",
+                "enum": ["circulo", "cuadrado", "triangulo", "diamante", "estrella", "ninguno"]
+              },
+              "etiqueta": {"type": "string"}
+            }
+          }
+        },
+        "anotaciones": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "texto": {"type": "string"},
+              "posicion": {
+                "type": "array",
+                "items": {"type": "number"},
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "alineacion": {
+                "type": "string",
+                "enum": ["izquierda", "centro", "derecha"]
+              }
+            }
+          }
+        },
+        "figuras_geometricas": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "tipo": {
+                "type": "string",
+                "enum": ["triangulo", "circulo", "rectangulo", "poligono", "elipse", "otro"]
+              },
+              "vertices": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {"type": "number"},
+                  "minItems": 2,
+                  "maxItems": 2
+                }
+              },
+              "color_relleno": {"type": "string"},
+              "color_borde": {"type": "string"},
+              "grosor_borde": {"type": "number"}
+            }
+          }
+        },
+        "graficos_estadisticos": {
+          "type": "object",
+          "properties": {
+            "tipo": {
+              "type": "string",
+              "enum": ["barras", "histograma", "circular", "dispersion", "boxplot", "otro"]
+            },
+            "datos": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "categoria": {"type": "string"},
+                  "valor": {"type": "number"}
+                }
+              }
+            },
+            "colores": {
+              "type": "array",
+              "items": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "paleta_colores": {
+      "type": "object",
+      "properties": {
+        "funcion_principal": {"type": "string"},
+        "ejes": {"type": "string"},
+        "grilla": {"type": "string"},
+        "fondo": {"type": "string"},
+        "texto": {"type": "string"},
+        "otros": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "recomendaciones_tecnicas": {
+      "type": "object",
+      "properties": {
+        "tikz": {
+          "type": "string",
+          "description": "Recomendaciones específicas para TikZ"
+        },
+        "python": {
+          "type": "string",
+          "description": "Recomendaciones específicas para Python"
+        },
+        "r": {
+          "type": "string",
+          "description": "Recomendaciones específicas para R"
+        }
+      }
+    },
+    "notas": {
+      "type": "string",
+      "description": "Notas adicionales del análisis"
+    }
+  }
+}
+

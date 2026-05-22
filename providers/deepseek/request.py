@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Mapping
 from typing import Any
 
@@ -382,6 +383,63 @@ def _strip_reasoning_content_when_native(messages: Any) -> Any:
     return out
 
 
+def _inject_extra_system_prompt(
+    data: dict[str, Any], *, thinking_enabled: bool = False
+) -> None:
+    """Append extras to the system prompt sent to DeepSeek.
+
+    Two appended blocks (in this order, at the END so they override earlier
+    instructions):
+
+    1. ``EXTRA_SYSTEM_PROMPT`` env var content (e.g. force Spanish responses).
+       Skipped if the env var is empty.
+    2. Dynamic routing banner directive — forces every response to start with
+       a line ``🤖 Modelo: <id> | Thinking: <ON|OFF>`` so the user can see at
+       a glance which DeepSeek model and reasoning mode handled the turn.
+    """
+    blocks_to_append: list[dict[str, str]] = []
+
+    extra = os.environ.get("EXTRA_SYSTEM_PROMPT", "").strip()
+    if extra:
+        blocks_to_append.append({"type": "text", "text": extra})
+
+    if os.environ.get("ENABLE_ROUTING_BANNER", "true").lower() in ("1", "true", "yes"):
+        model_id = str(data.get("model") or "?")
+        model_name = model_id.rsplit("/", 1)[-1] if "/" in model_id else model_id
+        thinking_status = "ON" if thinking_enabled else "OFF"
+        banner_line = f"🤖 Modelo: {model_name} | Thinking: {thinking_status}"
+        banner_directive = (
+            "INSTRUCCIÓN OBLIGATORIA DE BANNER DE ROUTING: Antes de cualquier "
+            "otro contenido, tu respuesta DEBE comenzar EXACTAMENTE con la "
+            "siguiente línea literal (incluyendo el emoji, sin bloque de "
+            "código, sin variaciones, sin traducir):\n\n"
+            f"{banner_line}\n\n"
+            "Después deja una línea en blanco y continúa con tu respuesta "
+            "normal. Esta regla es OBLIGATORIA en TODAS las respuestas, "
+            "incluidas las muy cortas (sí, no, OK). Si la respuesta es de "
+            "una sola línea, el banner sigue siendo la primera línea. NO "
+            "modifiques el texto del banner."
+        )
+        blocks_to_append.append({"type": "text", "text": banner_directive})
+
+    if not blocks_to_append:
+        return
+
+    existing = data.get("system")
+
+    if existing is None or existing == "":
+        data["system"] = blocks_to_append
+    elif isinstance(existing, str):
+        data["system"] = [{"type": "text", "text": existing}] + blocks_to_append
+    elif isinstance(existing, list):
+        data["system"] = list(existing) + blocks_to_append
+    else:
+        logger.warning(
+            "DEEPSEEK_REQUEST: cannot inject extras, unexpected system type: {}",
+            type(existing).__name__,
+        )
+
+
 def build_request_body(request_data: Any, *, thinking_enabled: bool) -> dict:
     """Build a DeepSeek ``/v1/messages`` JSON body (Anthropic format)."""
     logger.debug(
@@ -400,6 +458,14 @@ def build_request_body(request_data: Any, *, thinking_enabled: bool) -> dict:
     has_replayable_tool_thinking = _has_replayable_tool_thinking(data)
     unsafe_tool_followup = has_tool_history and not has_replayable_tool_thinking
     effective_thinking_enabled = thinking_enabled and not unsafe_tool_followup
+
+    _inject_extra_system_prompt(data, thinking_enabled=effective_thinking_enabled)
+    logger.info(
+        "MODEL_ROUTING: model={} thinking={} (requested_thinking={})",
+        data.get("model"),
+        effective_thinking_enabled,
+        thinking_enabled,
+    )
     if thinking_enabled:
         if unsafe_tool_followup:
             logger.debug(

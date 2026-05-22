@@ -1,0 +1,167 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Lecciones Aprendidas Schema",
+  "description": "Esquema para documentar éxitos y problemas por lenguaje para transferencia de conocimiento",
+  "type": "object",
+  "required": ["timestamp_inicio"],
+  "properties": {
+    "timestamp_inicio": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp ISO 8601 del inicio del proyecto"
+    },
+    "timestamp_ultima_actualizacion": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp ISO 8601 de la última actualización"
+    },
+    "tikz": {
+      "type": "object",
+      "properties": {
+        "exitos": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "descripcion": {"type": "string"},
+              "categoria": {
+                "type": "string",
+                "enum": ["colores", "posicionamiento", "estilos", "funciones", "anotaciones", "otro"]
+              },
+              "codigo_ejemplo": {"type": "string"},
+              "iteracion": {"type": "integer"}
+            }
+          }
+        },
+        "problemas": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "descripcion": {"type": "string"},
+              "categoria": {
+                "type": "string",
+                "enum": ["colores", "posicionamiento", "estilos", "funciones", "anotaciones", "otro"]
+              },
+              "solucion": {"type": "string"},
+              "iteraciones_requeridas": {"type": "integer"}
+            }
+          }
+        }
+      }
+    },
+    "python": {
+      "type": "object",
+      "properties": {
+        "aplicar_de_tikz": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "leccion": {"type": "string"},
+              "aplicacion": {"type": "string"},
+              "resultado": {
+                "type": "string",
+                "enum": ["exitoso", "parcial", "no_aplicable"]
+              }
+            }
+          }
+        },
+        "exitos": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "descripcion": {"type": "string"},
+              "categoria": {
+                "type": "string",
+                "enum": ["colores", "posicionamiento", "estilos", "funciones", "anotaciones", "otro"]
+              },
+              "codigo_ejemplo": {"type": "string"},
+              "iteracion": {"type": "integer"}
+            }
+          }
+        },
+        "problemas": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "descripcion": {"type": "string"},
+              "categoria": {
+                "type": "string",
+                "enum": ["colores", "posicionamiento", "estilos", "funciones", "anotaciones", "otro"]
+              },
+              "solucion": {"type": "string"},
+              "iteraciones_requeridas": {"type": "integer"}
+            }
+          }
+        }
+      }
+    },
+    "r": {
+      "type": "object",
+      "properties": {
+        "aplicar_de_tikz": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "leccion": {"type": "string"},
+              "aplicacion": {"type": "string"},
+              "resultado": {
+                "type": "string",
+                "enum": ["exitoso", "parcial", "no_aplicable"]
+              }
+            }
+          }
+        },
+        "aplicar_de_python": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "leccion": {"type": "string"},
+              "aplicacion": {"type": "string"},
+              "resultado": {
+                "type": "string",
+                "enum": ["exitoso", "parcial", "no_aplicable"]
+              }
+            }
+          }
+        },
+        "exitos": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "descripcion": {"type": "string"},
+              "categoria": {
+                "type": "string",
+                "enum": ["colores", "posicionamiento", "estilos", "funciones", "anotaciones", "otro"]
+              },
+              "codigo_ejemplo": {"type": "string"},
+              "iteracion": {"type": "integer"}
+            }
+          }
+        },
+        "problemas": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "descripcion": {"type": "string"},
+              "categoria": {
+                "type": "string",
+                "enum": ["colores", "posicionamiento", "estilos", "funciones", "anotaciones", "otro"]
+              },
+              "solucion": {"type": "string"},
+              "iteraciones_requeridas": {"type": "integer"}
+            }
+          }
+        }
+      }
+    }
+  }
+}
+

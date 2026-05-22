@@ -1,0 +1,73 @@
+{
+  "version": "2.0",
+  "ejercicio": "rango_diferencia_botellas_metacognitivo_argumentacion_n3_schoice_v1",
+  "tipo": "schoice",
+  "timestamp_inicio": "2026-05-15T19:54:44.223400-05:00",
+  "timestamp_ultima_actualizacion": "2026-05-18T09:30:00.000000-05:00",
+  "pasos": {
+    "analisis_icfes": {
+      "completado": true,
+      "timestamp": "2026-05-15T19:55:46.701918-05:00",
+      "resultado": null,
+      "competencia": "Argumentacion",
+      "componente": "Aleatorio",
+      "nivel": 3,
+      "descriptor": "D3.10",
+      "tema": "Medidas de dispersion: rango",
+      "clave": "B",
+      "dok": 3,
+      "bloom": "Evaluar",
+      "solo": "Relacional"
+    },
+    "flujo_b": {
+      "requerido": false,
+      "completado": true,
+      "timestamp": "2026-05-15T20:09:00.463621-05:00"
+    },
+    "generacion_rmd": {
+      "completado": true,
+      "timestamp": "2026-05-18T09:00:00.000000-05:00",
+      "archivo": "rango_diferencia_botellas_metacognitivo_argumentacion_n3_schoice_v1.Rmd",
+      "nota": "Reestructurado de evaluacion_afirmacion a comparacion_procedimientos para alinear con Tarea canonica del 01.md"
+    },
+    "retroalimentacion": {
+      "completado": true,
+      "timestamp": "2026-05-15T20:17:28.806237-05:00"
+    },
+    "renderizado_4_formatos": {
+      "completado": true,
+      "timestamp": "2026-05-18T09:20:00.000000-05:00",
+      "nota": "Re-renderizado post-reestructuracion y post-correccion ortografica. 4/4 formatos OK"
+    },
+    "arsenal_post_render": {
+      "completado": true,
+      "timestamp": "2026-05-18T09:25:00.000000-05:00",
+      "nota": "20/20 semillas OK"
+    },
+    "detractor_fase2c": {
+      "completado": true,
+      "timestamp": "2026-05-18T09:30:00.000000-05:00",
+      "veredicto": "APROBAR",
+      "objeciones": "1 objecion CRITICA (ortografia sin tildes) corregida con script de ortografia (92 correcciones). 1 regresion (codigo->código en nombre de elemento R) corregida manualmente."
+    },
+    "coherencias_5": {
+      "completado": true,
+      "timestamp": "2026-05-18T09:30:00.000000-05:00",
+      "nota": "5 coherencias verificadas via inspeccion HTML + multi-semilla. br tags renderizan correctamente Paso 1 / Paso 2 en renglones separados."
+    },
+    "validar_diversidad": {
+      "completado": true,
+      "timestamp": "2026-05-18T09:25:00.000000-05:00",
+      "versiones_unicas": 300
+    },
+    "validar_icfes": {
+      "completado": true,
+      "timestamp": "2026-05-18T09:30:00.000000-05:00",
+      "nota": "Metadatos ICFES completos: Competencia=Argumentacion, Componente=Aleatorio, Afirmacion/Evidencia canonicas, Aprendizaje/Tarea agregados, Nivel=3, DOK=3, Bloom=Evaluar, SOLO=Relacional, Descriptor=D3.10"
+    },
+    "aprobacion_usuario": {
+      "completado": false,
+      "timestamp": null
+    }
+  }
+}

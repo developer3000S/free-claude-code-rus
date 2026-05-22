@@ -1,0 +1,256 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ejercicio_state.schema.json",
+  "title": "EjercicioState",
+  "description": "Estado persistente del workflow para un ejercicio ICFES R/exams",
+  "type": "object",
+  "required": [
+    "version",
+    "ejercicio",
+    "tipo",
+    "timestamp_inicio",
+    "timestamp_ultima_actualizacion",
+    "pasos"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Versión del schema de estado",
+      "const": "2.0"
+    },
+    "ejercicio": {
+      "type": "string",
+      "description": "Nombre del ejercicio (por defecto el nombre del directorio)",
+      "minLength": 1
+    },
+    "tipo": {
+      "type": "string",
+      "description": "Tipo de ejercicio R/exams",
+      "enum": ["schoice", "cloze"]
+    },
+    "timestamp_inicio": {
+      "type": "string",
+      "description": "Fecha y hora de creación del estado (ISO 8601)",
+      "format": "date-time"
+    },
+    "timestamp_ultima_actualizacion": {
+      "type": "string",
+      "description": "Fecha y hora de la última modificación (ISO 8601)",
+      "format": "date-time"
+    },
+    "pasos": {
+      "type": "object",
+      "description": "Estado de cada paso del workflow",
+      "required": [
+        "analisis_icfes",
+        "flujo_b",
+        "generacion_rmd",
+        "retroalimentacion",
+        "renderizado_4_formatos",
+        "arsenal_post_render",
+        "detractor_fase2c",
+        "coherencias_5",
+        "validar_diversidad",
+        "validar_icfes",
+        "aprobacion_usuario"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "analisis_icfes": {
+          "type": "object",
+          "description": "Paso 1: Análisis inicial del ejercicio ICFES (/analizar-icfes)",
+          "required": ["completado", "timestamp", "resultado"],
+          "additionalProperties": false,
+          "properties": {
+            "completado": {
+              "type": "boolean",
+              "description": "Indica si el paso fue completado"
+            },
+            "timestamp": {
+              "type": ["string", "null"],
+              "description": "ISO 8601 del momento de completación",
+              "format": "date-time"
+            },
+            "resultado": {
+              "type": ["string", "null"],
+              "description": "Resumen del resultado del análisis (e.g. 'Clasificado N2/Interpretación')"
+            }
+          }
+        },
+        "flujo_b": {
+          "type": "object",
+          "description": "Paso 2: Flujo B del Graficador Experto (si requiere gráficos)",
+          "required": ["requerido", "completado", "timestamp"],
+          "additionalProperties": false,
+          "properties": {
+            "requerido": {
+              "type": ["boolean", "null"],
+              "description": "null = por determinar, true = requiere gráficos, false = no requiere"
+            },
+            "completado": {
+              "type": "boolean",
+              "description": "Indica si el Flujo B fue completado (irrelevante si requerido=false)"
+            },
+            "timestamp": {
+              "type": ["string", "null"],
+              "description": "ISO 8601 del momento de completación",
+              "format": "date-time"
+            }
+          }
+        },
+        "generacion_rmd": {
+          "type": "object",
+          "description": "Paso 3: Generación del archivo .Rmd (/generar-schoice o /generar-cloze)",
+          "required": ["completado", "timestamp", "archivo"],
+          "additionalProperties": false,
+          "properties": {
+            "completado": {
+              "type": "boolean",
+              "description": "Indica si el .Rmd fue generado"
+            },
+            "timestamp": {
+              "type": ["string", "null"],
+              "description": "ISO 8601 del momento de completación",
+              "format": "date-time"
+            },
+            "archivo": {
+              "type": ["string", "null"],
+              "description": "Nombre del archivo .Rmd generado (e.g. 'mediana_metacognitivo_v1.Rmd')"
+            }
+          }
+        },
+        "retroalimentacion": {
+          "type": "object",
+          "description": "Paso 4: Generación de sección Solution (/skill-retroalimentacion)",
+          "required": ["completado", "timestamp"],
+          "additionalProperties": false,
+          "properties": {
+            "completado": {
+              "type": "boolean"
+            },
+            "timestamp": {
+              "type": ["string", "null"],
+              "format": "date-time"
+            }
+          }
+        },
+        "renderizado_4_formatos": {
+          "type": "object",
+          "description": "Paso 5: Renderizado en HTML, PDF, DOCX y NOPS",
+          "required": ["completado", "timestamp"],
+          "additionalProperties": false,
+          "properties": {
+            "completado": {
+              "type": "boolean"
+            },
+            "timestamp": {
+              "type": ["string", "null"],
+              "format": "date-time"
+            }
+          }
+        },
+        "arsenal_post_render": {
+          "type": "object",
+          "description": "Paso 6: Validaciones automáticas post-render (hook FASE 2A-2H)",
+          "required": ["completado", "timestamp"],
+          "additionalProperties": false,
+          "properties": {
+            "completado": {
+              "type": "boolean"
+            },
+            "timestamp": {
+              "type": ["string", "null"],
+              "format": "date-time"
+            }
+          }
+        },
+        "detractor_fase2c": {
+          "type": "object",
+          "description": "Paso 7: Revisión adversarial FASE 2C (/adversario archivo.Rmd)",
+          "required": ["completado", "timestamp", "veredicto"],
+          "additionalProperties": false,
+          "properties": {
+            "completado": {
+              "type": "boolean"
+            },
+            "timestamp": {
+              "type": ["string", "null"],
+              "format": "date-time"
+            },
+            "veredicto": {
+              "type": ["string", "null"],
+              "description": "Veredicto del detractor",
+              "enum": ["APROBAR", "APROBAR CON CAMBIOS", "RECHAZAR", null]
+            }
+          }
+        },
+        "coherencias_5": {
+          "type": "object",
+          "description": "Paso 8: Documentación de las 5 coherencias (Semántica, Visual-Texto, Matemática, Código, General)",
+          "required": ["completado", "timestamp"],
+          "additionalProperties": false,
+          "properties": {
+            "completado": {
+              "type": "boolean"
+            },
+            "timestamp": {
+              "type": ["string", "null"],
+              "format": "date-time"
+            }
+          }
+        },
+        "validar_diversidad": {
+          "type": "object",
+          "description": "Paso 9: Validación de diversidad de versiones (/validar-diversidad, mínimo 200)",
+          "required": ["completado", "timestamp", "versiones_unicas"],
+          "additionalProperties": false,
+          "properties": {
+            "completado": {
+              "type": "boolean"
+            },
+            "timestamp": {
+              "type": ["string", "null"],
+              "format": "date-time"
+            },
+            "versiones_unicas": {
+              "type": ["integer", "null"],
+              "description": "Número de versiones únicas generadas (mínimo aceptable: 200)",
+              "minimum": 0
+            }
+          }
+        },
+        "validar_icfes": {
+          "type": "object",
+          "description": "Paso 10: Validación de los 6 metadatos ICFES obligatorios (/validar-icfes)",
+          "required": ["completado", "timestamp"],
+          "additionalProperties": false,
+          "properties": {
+            "completado": {
+              "type": "boolean"
+            },
+            "timestamp": {
+              "type": ["string", "null"],
+              "format": "date-time"
+            }
+          }
+        },
+        "aprobacion_usuario": {
+          "type": "object",
+          "description": "Paso 11: Aprobación explícita del usuario para avanzar a producción",
+          "required": ["completado", "timestamp"],
+          "additionalProperties": false,
+          "properties": {
+            "completado": {
+              "type": "boolean"
+            },
+            "timestamp": {
+              "type": ["string", "null"],
+              "format": "date-time"
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,584 @@
+```{r data_generation, echo=FALSE, results='hide', warning=FALSE, message=FALSE}
+library(testthat)
+
+# ---- Semilla por versión ----
+seed_global <- as.integer(Sys.time()) %% 100000 + sample(1:99999, 1)
+set.seed(seed_global)
+
+# ---- Generar datos aleatorios: cantidades de agua en N botellas ----
+n_botellas <- sample(80:120, 1)
+cantidad_objetivo <- sample(c(250, 300, 330, 350, 355, 500, 600, 750, 1000), 1)
+margen <- round(cantidad_objetivo * 0.04, 1)
+cantidades <- round(runif(n_botellas, cantidad_objetivo - margen, cantidad_objetivo + margen), 1)
+
+# Calcular las medidas reales para referencia
+rango_real <- max(cantidades) - min(cantidades)
+promedio_real <- round(mean(cantidades), 1)
+
+# ---- Pool de contextos narrativos (regla #11: 8 contextos, 6+ tipos) ----
+contextos <- list(
+  # Tipo 1: Actor institucional
+  list(
+    plantilla = function(prot, n, obj) {
+      paste0("En ", prot, ", un lote de ", n,
+             " botellas de agua fue seleccionado para control de calidad. ",
+             "Cada botella debe contener aproximadamente ", obj,
+             " mL. El supervisor necesita verificar que no haya dos botellas ",
+             "con una diferencia grande en la cantidad de agua.")
+    },
+    protagonistas = c(
+      "la planta embotelladora AguaClara",
+      "la fábrica de bebidas Manantial del Sur",
+      "la empresa distribuidora de agua CristalAndina",
+      "la compañía de aguas Purísima S.A."
+    )
+  ),
+  # Tipo 2: Narracion periodistica
+  list(
+    plantilla = function(prot, n, obj) {
+      paste0("En ", prot, ", se realizó una inspección a ", n,
+             " botellas de agua de ", obj, " mL. ",
+             "Un consumidor había reportado que algunas botellas parecían ",
+             "tener menos agua que otras, y el organismo de control necesita ",
+             "determinar si hay diferencias grandes entre las botellas.")
+    },
+    protagonistas = c(
+      "el operativo de control al comercio de La Vega",
+      "la inspección de la Secretaría de Salud de Cundinamarca",
+      "la auditoría de calidad de la Gobernación del Valle",
+      "la revisión de la Superintendencia de Industria y Comercio"
+    )
+  ),
+  # Tipo 3: Situacion problema
+  list(
+    plantilla = function(prot, n, obj) {
+      paste0(prot, " recibió ", n, " botellas de agua de ", obj,
+             " mL para un evento. Antes de distribuirlas, quiere comprobar ",
+             "que la cantidad de agua sea similar en todas las botellas. ",
+             "Cómo puede identificar si hay dos botellas con una diferencia ",
+             "grande en la cantidad de agua que contienen?")
+    },
+    protagonistas = c(
+      "El comité organizador de la maratón municipal",
+      "La coordinadora del campamento de verano",
+      "El director de la feria escolar de ciencias",
+      "La asociación de padres de familia del colegio"
+    )
+  ),
+  # Tipo 4: Perspectiva del estudiante
+  list(
+    plantilla = function(prot, n, obj) {
+      paste0(prot, " realizó un experimento en clase de estadística: ",
+             "midió la cantidad de agua en ", n, " botellas que, según la ",
+             "etiqueta, contienen ", obj, " mL cada una. Su profesor le ",
+             "pidió que eligiera, entre varios procedimientos estadísticos, ",
+             "cuál permite detectar si hay dos botellas con cantidades ",
+             "muy diferentes.")
+    },
+    protagonistas = c(
+      "Valentina", "Santiago", "Isabela", "Mateo", "Luciana", "Daniel"
+    )
+  ),
+  # Tipo 5: Contexto institucional
+  list(
+    plantilla = function(prot, n, obj) {
+      paste0("El informe mensual de ", prot, " incluye los resultados ",
+             "del control de llenado de ", n, " botellas de agua (",
+             obj, " mL nominales). El documento debe reportar si existe ",
+             "evidencia de diferencias grandes entre las botellas ",
+             "del mismo lote.")
+    },
+    protagonistas = c(
+      "la oficina de control de calidad de Embotelladora Nacional",
+      "el laboratorio de metrología de la Universidad Industrial",
+      "la dirección técnica de la Asociación de Bebidas",
+      "el departamento de verificación de Pesos y Medidas"
+    )
+  ),
+  # Tipo 6: Dialogo implicito
+  list(
+    plantilla = function(prot, n, obj) {
+      paste0("Necesito asegurarme de que todas las botellas tengan ",
+             "cantidades parecidas -dijo ", prot,
+             " al revisar el lote de ", n, " botellas de ", obj,
+             " mL-. Cuál procedimiento estadístico me permite detectar si hay ",
+             "dos botellas con una diferencia grande?")
+    },
+    protagonistas = c(
+      "el jefe de producción",
+      "la supervisora de turno",
+      "el técnico de laboratorio",
+      "la inspectora de calidad"
+    )
+  ),
+  # Tipo 7: Accion en curso
+  list(
+    plantilla = function(prot, n, obj) {
+      paste0("Durante la auditoría de calidad en ", prot, ", se ",
+             "seleccionaron al azar ", n, " botellas de ", obj,
+             " mL. El auditor debe decidir qué procedimiento estadístico ",
+             "aplicar para verificar si la diferencia entre las botellas ",
+             "con mayor y menor contenido es preocupante.")
+    },
+    protagonistas = c(
+      "la planta de producción de Agua Viva",
+      "la sede principal de Bebidas Refrescantes S.A.",
+      "el centro de distribución de HidroAndes",
+      "la fábrica de Agua de Montaña Ltda."
+    )
+  ),
+  # Tipo 8: Pregunta retorica
+  list(
+    plantilla = function(prot, n, obj) {
+      paste0("Cómo puede ", prot, " determinar si hay dos botellas ",
+             "con una diferencia grande en ", n, " unidades de ",
+             obj, " mL? Esta es la pregunta que enfrenta todo proceso ",
+             "de control de calidad cuando busca garantizar la ",
+             "uniformidad del producto.")
+    },
+    protagonistas = c(
+      "un ingeniero de procesos",
+      "una analista de calidad",
+      "un supervisor de línea de producción",
+      "una consultora en mejora de procesos"
+    )
+  )
+)
+
+# Seleccionar contexto
+ctx <- contextos[[sample(length(contextos), 1)]]
+prot <- sample(ctx$protagonistas, 1)
+prot_sentence <- paste0(toupper(substr(prot, 1, 1)), substr(prot, 2, nchar(prot)))
+enunciado_contexto <- ctx$plantilla(prot, n_botellas, cantidad_objetivo)
+
+# ---- Pool de procedimientos incorrectos (distractores) ----
+# Cada procedimiento es de dos pasos y aplica una medida estadística distinta
+procedimientos_incorrectos <- list(
+  list(
+    codigo = "EST-RAN-01",
+    nombre = "Confusión del rango con el promedio",
+    descripcion_corta = paste0(
+      "Paso 1: Sumar las cantidades de agua de las ", n_botellas,
+      " botellas y dividir el resultado entre ", n_botellas,
+      ".", "<br>", "Paso 2: Comparar el valor obtenido -el promedio- con la cantidad ",
+      "de agua esperada. Si el promedio se aleja de lo esperado, se concluye ",
+      "que hay diferencias grandes entre las botellas."
+    ),
+    descripcion_larga = paste0(
+      "Este procedimiento es incorrecto porque el promedio -sumar todos los ",
+      "valores y dividir entre el número de datos- es una medida de tendencia ",
+      "central, no de dispersión. El promedio indica cuál es el valor típico ",
+      "del conjunto, pero no revela qué tan separados están los valores ",
+      "extremos entre si. Dos conjuntos de botellas pueden tener el mismo ",
+      "promedio y sin embargo presentar diferencias muy distintas entre la ",
+      "botella con más agua y la botella con menos agua. Además, comparar ",
+      "el promedio con un valor de referencia (", cantidad_objetivo, " mL) detecta si el lote ",
+      "está descentrado, no si hay dos botellas con una diferencia grande."
+    ),
+    causa_raiz = paste0(
+      "El estudiante asocia incorrectamente la frase 'todos los valores' ",
+      "(implicita en 'sumar todas las cantidades') con la capacidad de ",
+      "detectar diferencias entre los extremos. No distingue entre una ",
+      "medida de tendencia central (promedio) y una medida de dispersión (rango)."
+    ),
+    precondicion = function(params) TRUE
+  ),
+  list(
+    codigo = "EST-RAN-02",
+    nombre = "Confusión del rango con la mediana",
+    descripcion_corta = paste0(
+      "Paso 1: Ordenar las ", n_botellas,
+      " botellas de menor a mayor cantidad de agua.", "<br>",
+      "Paso 2: Identificar la cantidad de agua de la botella que ocupa la ",
+      "posición central -la mediana- y compararla con los valores de los ",
+      "extremos. Si la mediana está lejos de alguno de los extremos, se ",
+      "concluye que hay diferencias grandes entre las botellas."
+    ),
+    descripcion_larga = paste0(
+      "Este procedimiento es incorrecto porque la mediana -el valor que ocupa ",
+      "la posición central cuando los datos están ordenados- es una medida de ",
+      "tendencia central, no de dispersión. La mediana divide el conjunto en ",
+      "dos mitades iguales en cantidad de datos, pero no cuantifica la ",
+      "diferencia entre la botella con más agua y la botella con menos agua. ",
+      "Un lote puede tener la mediana muy cerca del promedio pero presentar ",
+      "un rango amplio si existen valores atípicos en ambos extremos. ",
+      "Comparar la mediana con los extremos dice qué tan lejos está el centro ",
+      "de cada extremo, pero no cuál es la diferencia entre los dos extremos, ",
+      "que es lo que se necesita para responder la pregunta."
+    ),
+    causa_raiz = paste0(
+      "El estudiante confunde el concepto de 'ordenar los datos' -que es un ",
+      "paso previo tanto para la mediana como para identificar máximo y ",
+      "mínimo- con el propósito de la medida. Ordenar no implica calcular ",
+      "la mediana; ordenar también permite hallar los extremos para el rango."
+    ),
+    precondicion = function(params) TRUE
+  ),
+  list(
+    codigo = "EST-RAN-03",
+    nombre = "Confusión del rango con la moda",
+    descripcion_corta = paste0(
+      "Paso 1: Contar cuántas botellas tienen cada cantidad de agua.", "<br>",
+      "Paso 2: Identificar la cantidad que aparece con mayor frecuencia ",
+      "-la moda- y determinar que botellas se alejan más de ese valor. ",
+      "Si alguna botella tiene una cantidad muy distinta de la moda, se ",
+      "concluye que hay diferencias grandes entre las botellas."
+    ),
+    descripcion_larga = paste0(
+      "Este procedimiento es incorrecto porque la moda -el valor que aparece ",
+      "con mayor frecuencia en el conjunto- no mide dispersión. La moda solo ",
+      "indica cuál es la cantidad de agua más repetida entre las botellas, ",
+      "pero no informa sobre la magnitud de la diferencia entre la botella ",
+      "con más agua y la botella con menos agua. Un valor puede ser el más ",
+      "frecuente sin ser representativo de los extremos. Por ejemplo, si la mayoría ",
+      "de las botellas tienen ", cantidad_objetivo, " mL pero hay una con ",
+      cantidad_objetivo - margen * 2, " mL y otra con ", cantidad_objetivo + margen * 2,
+      " mL, la moda es ", cantidad_objetivo,
+      " mL, pero la diferencia grande solo la detecta el ",
+      "rango. Comparar contra la moda revela que botellas son atípicas en ",
+      "frecuencia, no la diferencia entre los dos valores más extremos."
+    ),
+    causa_raiz = paste0(
+      "El estudiante asocia 'valor atípico' con 'valor alejado de lo ",
+      "frecuente'. Si bien un valor atípico puede ser poco frecuente, ",
+      "lo que define la mayor diferencia es la distancia entre los extremos, ",
+      "no la frecuencia de los valores."
+    ),
+    precondicion = function(params) TRUE
+  ),
+  list(
+    codigo = "EST-RAN-04",
+    nombre = "Diferencia entre dos botellas cualesquiera en lugar del rango",
+    descripcion_corta = paste0(
+      "Paso 1: Seleccionar dos botellas al azar del lote de ", n_botellas,
+      ".", "<br>", "Paso 2: Restar sus cantidades de agua. Si la diferencia entre esas ",
+      "dos botellas es grande, se concluye que existen botellas con ",
+      "diferencias grandes en el lote."
+    ),
+    descripcion_larga = paste0(
+      "Este procedimiento es incorrecto porque elegir dos botellas al azar ",
+      "no garantiza encontrar la mayor diferencia posible. El azar puede ",
+      "seleccionar dos botellas con cantidades muy similares aunque en el ",
+      "lote existan otras dos botellas con una diferencia mucho mayor. ",
+      "El rango -definido operacionalmente como máximo menos mínimo- resuelve ",
+      "este problema porque selecciona deliberadamente los dos valores más ",
+      "extremos del conjunto completo. La diferencia entre dos botellas ",
+      "cualesquiera es una diferencia entre dos datos, pero no es ",
+      "necesariamente la mayor diferencia posible, que es lo que se ",
+      "necesita para responder si hay botellas con diferencias grandes."
+    ),
+    causa_raiz = paste0(
+      "El estudiante interpreta 'rango' en su sentido coloquial ('conjunto ",
+      "de valores entre dos extremos') y no en su sentido estadístico ",
+      "preciso ('diferencia entre el máximo y el mínimo'). Cree que ",
+      "cualquier diferencia entre dos datos es un rango, sin comprender ",
+      "que el rango muestral tiene una definición operacional específica."
+    ),
+    precondicion = function(params) TRUE
+  ),
+  list(
+    codigo = "EST-RAN-05",
+    nombre = "Confusión del rango con la desviación estándar",
+    descripcion_corta = paste0(
+      "Paso 1: Calcular el promedio de las cantidades de agua de las ",
+      n_botellas, " botellas.", "<br>",
+      "Paso 2: Calcular qué tan lejos está, en promedio, cada botella de ",
+      "ese valor central. Si el resultado -la desviación estándar- es ",
+      "grande, se concluye que hay diferencias grandes entre las botellas."
+    ),
+    descripcion_larga = paste0(
+      "Este procedimiento es incorrecto porque la desviación estándar mide ",
+      "la dispersión promedio de todos los valores respecto a la media, no ",
+      "la diferencia entre dos valores individuales extremos. La desviación ",
+      "estándar distribuye la variabilidad entre todos los datos y no aisla ",
+      "los extremos. Dos lotes de botellas pueden tener la misma desviación ",
+      "estándar pero rangos muy diferentes, y viceversa. Un lote con muchas ",
+      "botellas cerca del promedio y dos botellas extremas puede tener el ",
+      "mismo rango que otro lote con dispersión uniforme, pero desviaciones ",
+      "estándar muy distintas. La desviación estándar responde a 'cuánto ",
+      "varían típicamente las botellas', no a 'cuál es la mayor diferencia ",
+      "posible entre dos botellas'."
+    ),
+    causa_raiz = paste0(
+      "El estudiante sabe que el rango es una medida de dispersión, pero no ",
+      "distingue qué aspecto específico de la dispersión mide cada medida: ",
+      "el rango mide la amplitud total (dispersión absoluta entre extremos), ",
+      "mientras que la desviación estándar mide la dispersión promedio ",
+      "(cuánto se alejan típicamente los valores de la media)."
+    ),
+    precondicion = function(params) TRUE
+  ),
+  list(
+    codigo = "EST-RAN-06",
+    nombre = "Omisión del mínimo en la definición del rango",
+    descripcion_corta = paste0(
+      "Paso 1: Identificar la botella con mayor cantidad de agua del lote ",
+      "de ", n_botellas, ".", "<br>",
+      "Paso 2: Comparar ese valor máximo con la cantidad esperada (",
+      cantidad_objetivo, " mL). Si el valor máximo se aleja mucho de ",
+      cantidad_objetivo, " mL, se concluye que hay diferencias grandes ",
+      "entre las botellas."
+    ),
+    descripcion_larga = paste0(
+      "Este procedimiento es incorrecto porque usar solo el valor máximo ",
+      "no informa sobre la diferencia entre los extremos. Una botella con ",
+      "mucha agua no implica que exista otra con poca agua; la diferencia ",
+      "grande requiere contrastar dos valores. El rango es una diferencia ",
+      "(máximo - mínimo), no un valor absoluto. Si solo se toma el máximo, ",
+      "se pierde la información sobre la magnitud de la dispersión: un ",
+      "máximo de ", cantidad_objetivo + margen * 2, " mL podría corresponder a un mínimo de ",
+      cantidad_objetivo + round(margen * 0.3, 1), " mL ",
+      "(diferencia pequeña de ", round(margen * 1.7, 1), " mL) o a un mínimo de ",
+      cantidad_objetivo - margen * 2, " mL (diferencia ",
+      "grande de ", margen * 4, " mL). Sin el mínimo, es imposible saber si la diferencia ",
+      "es grande."
+    ),
+    causa_raiz = paste0(
+      "El estudiante confunde el concepto de 'medida de dispersión' (que ",
+      "siempre es una diferencia o una razón entre dos valores) con un ",
+      "'valor puntual'. Interpreta 'rango' como sinónimo de 'valor más ",
+      "alto' en lugar de 'diferencia entre el más alto y el más bajo'."
+    ),
+    precondicion = function(params) TRUE
+  )
+)
+
+# ---- Procedimiento correcto (dos pasos: rango) ----
+procedimiento_correcto <- paste0(
+  "Paso 1: Identificar la botella que contiene la mayor cantidad de agua ",
+  "y la botella que contiene la menor cantidad de agua dentro del lote de ",
+  n_botellas, " botellas.", "<br>",
+  "Paso 2: Restar la cantidad de agua de la botella con menor contenido ",
+  "de la cantidad de agua de la botella con mayor contenido. El valor ",
+  "obtenido -el rango- es la mayor diferencia posible entre dos botellas ",
+  "del lote."
+)
+
+# ---- Selección aleatoria de distractores ----
+n_distractores <- 3
+idx_seleccionados <- sample.int(length(procedimientos_incorrectos), n_distractores)
+errores_seleccionados <- procedimientos_incorrectos[idx_seleccionados]
+
+# ---- Construir opciones (1 correcta + 3 distractores) ----
+opciones_texto <- c(
+  procedimiento_correcto,
+  sapply(errores_seleccionados, `[[`, "descripcion_corta")
+)
+
+# La correcta es la primera -> exsolution = 1000
+solucion <- c(1L, 0L, 0L, 0L)
+
+# ---- Reflexiones metacognitivas ----
+reflexiones_metacognitivas <- list(
+  "Identificar el procedimiento correcto entre varios que parecen razonables es una habilidad metacognitiva fundamental: exige examinar cada opción con cuidado en lugar de aceptar la primera que suena plausible.",
+  "En estadística, saber distinguir que mide cada concepto (tendencia central, dispersión, frecuencia) es más importante que saber calcularlos. El rango, el promedio, la mediana y la moda responden preguntas distintas.",
+  "Cuando evaluamos un procedimiento estadístico, no basta con que los pasos estén bien redactados; el procedimiento debe ser lógicamente sólido y estar respaldado por la definición precisa del concepto que invoca.",
+  "Un error frecuente en el aprendizaje de estadística es confundir medidas que usan 'todos los datos' (como el promedio) con medidas que usan solo los extremos (como el rango). Reconocer esta diferencia es clave para el análisis de datos.",
+  "La metacognición en estadística implica preguntarse: este procedimiento responde a la pregunta que tengo? No toda medida sirve para todo propósito. Elegir la medida correcta es tan importante como calcularla bien.",
+  "Ante procedimientos que usan lenguaje técnico similar (sumar, ordenar, contar, restar), el pensamiento crítico exige verificar la definición exacta de cada medida, no dejarse llevar por la familiaridad de las operaciones.",
+  "Argumentar por qué un procedimiento estadístico es el adecuado requiere comprender su definición operacional: qué operaciones realiza, sobre qué datos, y qué interpretación permite el resultado.",
+  "Saber qué NO mide un procedimiento estadístico es tan importante como saber qué SI mide. El rango no mide tendencia central, no mide frecuencia y no promedia nada: solo calcula la diferencia entre los extremos."
+)
+
+reflexion <- reflexiones_metacognitivas[[sample(length(reflexiones_metacognitivas), 1)]]
+
+# ---- Validaciones internas ----
+test_that("Se seleccionaron exactamente 3 distractores", {
+  expect_equal(length(errores_seleccionados), 3)
+})
+
+test_that("Los distractores son distintos entre si", {
+  codigos <- sapply(errores_seleccionados, `[[`, "codigo")
+  expect_equal(length(unique(codigos)), 3)
+})
+
+test_that("El procedimiento correcto no esta entre los distractores", {
+  proc_distractores <- sapply(errores_seleccionados, `[[`, "descripcion_corta")
+  expect_false(any(proc_distractores == procedimiento_correcto))
+})
+
+test_that("solución marca exactamente una opción como correcta", {
+  expect_equal(sum(solucion), 1)
+  expect_equal(length(solucion), 4)
+})
+
+test_that("Precondiciones de procedimientos seleccionados se cumplen", {
+  params <- list(n = n_botellas, cantidades = cantidades)
+  for (err in errores_seleccionados) {
+    if (!is.null(err$precondicion)) {
+      expect_true(err$precondicion(params),
+        info = paste(err$codigo, "seleccionado pero precondicion no se cumple"))
+    }
+  }
+})
+```
+
+Question
+========
+
+`r enunciado_contexto`
+
+`r prot_sentence` está evaluando cuál de los siguientes procedimientos de dos pasos permite identificar si hay dos botellas con una diferencia grande en la cantidad de agua que contienen.
+
+Cuál de los siguientes procedimientos es el adecuado para identificar la mayor diferencia posible entre dos botellas?
+
+Answerlist
+----------
+
+```{r mostrar_opciones, echo=FALSE, results='asis'}
+for (i in seq_along(opciones_texto)) {
+  cat("* ", opciones_texto[i], "\n", sep = "")
+}
+```
+
+Solution
+========
+
+```{r solution_content, echo=FALSE, results='asis'}
+# ---- Análisis de los procedimientos incorrectos (Parte 1) ----
+cat("**Análisis de los procedimientos incorrectos**\n\n")
+
+for (err in errores_seleccionados) {
+  cat(
+    "**", err$codigo, " - ", err$nombre, "**\n\n",
+    "*Procedimiento evaluado:* \"", err$descripcion_corta, "\"\n\n",
+    err$descripcion_larga, "\n\n",
+    "**Causa raíz del error:** ", err$causa_raiz, "\n\n",
+    "---\n\n",
+    sep = ""
+  )
+}
+
+# ---- Procedimiento correcto (Parte 2) ----
+cat("**Procedimiento correcto: el rango**\n\n")
+
+cat(paste0(
+  "**Paso 1: Identificar los valores extremos.**\n\n",
+  "Se examinan las cantidades de agua en las ", n_botellas,
+  " botellas y se localizan:\n",
+  "- El valor **máximo**: la botella con mayor cantidad de agua (",
+  round(max(cantidades), 1), " mL).\n",
+  "- El valor **mínimo**: la botella con menor cantidad de agua (",
+  round(min(cantidades), 1), " mL).\n\n",
+  "**Paso 2: Calcular el rango.**\n\n",
+  "$$\\text{Rango} = \\text{Máximo} - \\text{Mínimo} = ",
+  round(max(cantidades), 1), " - ", round(min(cantidades), 1),
+  " = ", round(rango_real, 1), "\\text{ mL}$$\n\n",
+  "**Paso 3: Interpretar el resultado.**\n\n",
+  "El valor del rango (", round(rango_real, 1),
+  " mL) representa la mayor diferencia posible entre dos botellas ",
+  "cualesquiera del lote. Si esta diferencia se considera grande ",
+  "según los criterios de calidad establecidos, se concluye que ",
+  "existen botellas con cantidades significativamente diferentes. ",
+  "Si la diferencia es pequeña, el lote es uniforme.\n\n"
+))
+
+# ---- Propiedades del concepto (Parte 3) ----
+cat("**Propiedades del concepto: el rango**\n\n")
+
+cat(paste0(
+  "1. **Definición operacional**: Rango = Valor máximo - Valor mínimo. ",
+  "Es una medida de dispersión absoluta.\n\n",
+  "2. **Que mide exactamente**: La amplitud total del conjunto de datos, ",
+  "es decir, la distancia entre los dos valores más extremos.\n\n",
+  "3. **Que NO mide**: No mide tendencia central (promedio, mediana), ",
+  "no mide frecuencia (moda), no mide dispersión promedio (desviación",
+  "estándar). Solo mide la diferencia entre los extremos.\n\n",
+  "4. **Ventaja para este problema**: El rango es la única medida, ",
+  "entre las presentadas, que garantiza detectar la mayor diferencia ",
+  "posible entre dos valores individuales, porque selecciona exactamente ",
+  "los dos valores que definen esa diferencia: el máximo y el mínimo.\n\n",
+  "5. **Limitación**: El rango es sensible a valores atípicos. Una sola ",
+  "botella con una cantidad anómala (por exceso o por defecto) puede ",
+  "generar un rango grande aunque las otras ", n_botellas - 2,
+  " botellas sean muy uniformes. Para este problema, sin embargo, ",
+  "esa sensibilidad es precisamente la propiedad deseada, porque el ",
+  "objetivo es detectar si existen dos botellas con una diferencia grande.\n\n"
+))
+
+# ---- Caso específico (Parte 4) ----
+cat("**Caso específico: aplicación al lote de botellas**\n\n")
+
+# Generar un caso concreto con diferencia pequeña vs grande
+set.seed(seed_global + 1)
+caso_pequeno <- round(runif(5, cantidad_objetivo - margen * 0.5, cantidad_objetivo + margen * 0.5), 1)
+caso_grande <- round(runif(5, cantidad_objetivo - margen * 2, cantidad_objetivo + margen * 2), 1)
+
+cat(paste0(
+  "**Ejemplo 1 - Diferencia pequeña:**\n\n",
+  "Cinco botellas con cantidades: ", paste(caso_pequeno, collapse = ", "), " mL.\n",
+  "Rango = ", round(max(caso_pequeno), 1), " - ", round(min(caso_pequeno), 1),
+  " = ", round(max(caso_pequeno) - min(caso_pequeno), 1), " mL.\n",
+  "Conclusión: las botellas tienen cantidades muy similares.\n\n",
+  "**Ejemplo 2 - Diferencia grande:**\n\n",
+  "Cinco botellas con cantidades: ", paste(caso_grande, collapse = ", "), " mL.\n",
+  "Rango = ", round(max(caso_grande), 1), " - ", round(min(caso_grande), 1),
+  " = ", round(max(caso_grande) - min(caso_grande), 1), " mL.\n",
+  "Conclusión: existen botellas con cantidades notablemente diferentes.\n\n",
+  "En ambos casos, el rango detecta correctamente la magnitud de la ",
+  "diferencia sin necesidad de calcular promedios, medianas ni modas.\n\n"
+))
+
+# ---- Reflexión metacognitiva (Parte 5) ----
+cat("**Reflexión metacognitiva**\n\n")
+cat(reflexion, "\n\n")
+
+# ---- Estrategia para evitar el error (Parte 6) ----
+cat("**Estrategia para no confundir el rango con otras medidas**\n\n")
+cat(paste0(
+  "1. **Preguntarse qué operación realiza la medida**: Suma y divide? ",
+  "(promedio). Busca la posición central? (mediana). Cuenta frecuencias? ",
+  "(moda). Resta los extremos? (rango).\n\n",
+  "2. **Verificar la definición antes de elegir**: Si el procedimiento ",
+  "menciona 'sumar todos los valores', 'posición central' o 'valor más ",
+  "frecuente', pero la pregunta exige encontrar la mayor diferencia entre ",
+  "dos valores, hay una inconsistencia conceptual.\n\n",
+  "3. **Relacionar el procedimiento con la pregunta**: 'Hay dos botellas ",
+  "con una diferencia grande?' Se necesitan los dos valores más ",
+  "separados. Solo el rango los identifica directamente (máximo y mínimo). ",
+  "Ninguna otra medida básica aisla los extremos de esta forma.\n\n",
+  "4. **Practicar con contraejemplos**: Para cada procedimiento, preguntarse: ",
+  "'Puedo construir un conjunto de datos donde este procedimiento NO ",
+  "detecte una diferencia grande entre dos valores aunque exista?' Si la ",
+  "respuesta es si, ese procedimiento no es adecuado para el problema.\n"
+))
+
+# ---- Respuesta correcta identificada por contenido ----
+cat("**Procedimiento correcto**\n\n")
+cat("El procedimiento que utiliza el rango:\n\n")
+cat("> \"", procedimiento_correcto, "\"\n\n", sep = "")
+
+cat(paste0(
+  "Este procedimiento es correcto porque:\n\n",
+  "- Define con precisión qué es el rango (diferencia entre máximo y mínimo).\n",
+  "- Sus dos pasos (identificar extremos, restarlos) garantizan encontrar ",
+  "la mayor diferencia posible entre dos botellas del lote.\n",
+  "- No involucra operaciones de tendencia central (sumar, dividir, buscar ",
+  "posición central) ni de frecuencia (contar repeticiones).\n",
+  "- Conecta directamente la operación matemática (resta de extremos) con ",
+  "la pregunta planteada (identificar la diferencia más grande entre dos ",
+  "botellas).\n"
+))
+```
+
+Meta-information
+================
+exname: rango_diferencia_botellas_metacognitivo_argumentacion_n3_schoice_v1
+extype: schoice
+exsolution: `r paste(solucion, collapse = "")`
+exshuffle: TRUE
+extol: 0.01
+exextra[Type]: SCHOICE
+exextra[Competencia]: Argumentacion
+exextra[Componente]: Aleatorio
+exextra[Afirmacion]: Valida procedimientos y estrategias matematicas utilizadas para dar solucion a problemas
+exextra[Evidencia]: Argumenta a favor o en contra de un procedimiento para resolver un problema a la luz de criterios presentados o establecidos.
+exextra[Aprendizaje]: Distingue que medida estadistica es pertinente para identificar la mayor diferencia entre dos datos de un conjunto
+exextra[Tarea]: Ante cuatro procedimientos de dos pasos que aplican distintas medidas estadísticas a un conjunto de datos cuantitativos, argumentar cuál de ellos permite identificar la mayor diferencia posible entre dos valores del conjunto.
+exextra[Nivel]: 3
+exextra[DOK]: 3
+exextra[Bloom]: Evaluar
+exextra[SOLO]: Relacional
+exextra[TipoMetacognicion]: comparacion_procedimientos
+exextra[Tema]: Medidas de dispersion: rango
+exextra[Descriptor]: D3.10

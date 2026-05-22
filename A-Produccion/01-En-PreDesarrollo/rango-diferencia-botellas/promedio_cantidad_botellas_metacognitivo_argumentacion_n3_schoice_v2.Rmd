@@ -1,0 +1,611 @@
+```{r data_generation, echo=FALSE, results='hide', warning=FALSE, message=FALSE}
+library(testthat)
+
+# ---- Semilla por versión ----
+seed_global <- as.integer(Sys.time()) %% 100000 + sample(1:99999, 1)
+set.seed(seed_global)
+
+# ---- Generar datos aleatorios: cantidades de agua en N botellas ----
+n_botellas <- sample(80:120, 1)
+cantidad_objetivo <- sample(c(250, 300, 330, 350, 355, 500, 600, 750, 1000), 1)
+margen <- round(cantidad_objetivo * 0.04, 1)
+cantidades <- round(runif(n_botellas, cantidad_objetivo - margen, cantidad_objetivo + margen), 1)
+
+# Calcular las medidas reales para referencia
+rango_real <- max(cantidades) - min(cantidades)
+promedio_real <- round(mean(cantidades), 1)
+mediana_real <- median(cantidades)
+moda_calc <- as.numeric(names(sort(table(cantidades), decreasing = TRUE)[1]))
+
+# ---- Pool de contextos narrativos (regla #11: 8 contextos, 6+ tipos) ----
+contextos <- list(
+  # Tipo 1: Actor institucional
+  list(
+    plantilla = function(prot, n, obj) {
+      paste0("En ", prot, ", un lote de ", n,
+             " botellas de agua fue seleccionado para control de calidad. ",
+             "Cada botella debe contener aproximadamente ", obj,
+             " mL. El supervisor necesita determinar la cantidad típica de agua ",
+             "que contiene una botella del lote.")
+    },
+    protagonistas = c(
+      "la planta embotelladora AguaClara",
+      "la fábrica de bebidas Manantial del Sur",
+      "la empresa distribuidora de agua CristalAndina",
+      "la compañía de aguas Purísima S.A."
+    )
+  ),
+  # Tipo 2: Narración periodística
+  list(
+    plantilla = function(prot, n, obj) {
+      paste0("En ", prot, ", se realizó una inspección a ", n,
+             " botellas de agua de ", obj, " mL. ",
+             "Un consumidor había reportado que las botellas parecían ",
+             "tener cantidades variables de agua, y el organismo de control ",
+             "necesita determinar cuál es la cantidad de agua que, en promedio, ",
+             "contiene una botella del lote inspeccionado.")
+    },
+    protagonistas = c(
+      "el operativo de control al comercio de La Vega",
+      "la inspección de la Secretaría de Salud de Cundinamarca",
+      "la auditoría de calidad de la Gobernación del Valle",
+      "la revisión de la Superintendencia de Industria y Comercio"
+    )
+  ),
+  # Tipo 3: Situación problema
+  list(
+    plantilla = function(prot, n, obj) {
+      paste0(prot, " recibió ", n, " botellas de agua de ", obj,
+             " mL para un evento. Antes de distribuirlas, quiere conocer ",
+             "cuál es la cantidad de agua que típicamente contiene una botella. ",
+             "¿Cuál procedimiento estadístico le permite obtener ese valor representativo?")
+    },
+    protagonistas = c(
+      "El comité organizador de la maratón municipal",
+      "La coordinadora del campamento de verano",
+      "El director de la feria escolar de ciencias",
+      "La asociación de padres de familia del colegio"
+    )
+  ),
+  # Tipo 4: Perspectiva del estudiante
+  list(
+    plantilla = function(prot, n, obj) {
+      paste0(prot, " realizó un experimento en clase de estadística: ",
+             "midió la cantidad de agua en ", n, " botellas que, según la ",
+             "etiqueta, contienen ", obj, " mL cada una. Su profesor le ",
+             "pidió que eligiera, entre varios procedimientos estadísticos, ",
+             "cuál permite determinar la cantidad típica de agua por botella.")
+    },
+    protagonistas = c(
+      "Valentina", "Santiago", "Isabela", "Mateo", "Luciana", "Daniel"
+    )
+  ),
+  # Tipo 5: Contexto institucional
+  list(
+    plantilla = function(prot, n, obj) {
+      paste0("El informe mensual de ", prot, " incluye los resultados ",
+             "del control de llenado de ", n, " botellas de agua (",
+             obj, " mL nominales). El documento debe reportar la cantidad ",
+             "promedio de agua por botella del lote inspeccionado.")
+    },
+    protagonistas = c(
+      "la oficina de control de calidad de Embotelladora Nacional",
+      "el laboratorio de metrología de la Universidad Industrial",
+      "la dirección técnica de la Asociación de Bebidas",
+      "el departamento de verificación de Pesos y Medidas"
+    )
+  ),
+  # Tipo 6: Diálogo implícito
+  list(
+    plantilla = function(prot, n, obj) {
+      paste0("—Necesito saber cuál es la cantidad típica de agua que ",
+             "contiene una botella de este lote —dijo ",
+             prot, " al revisar las ", n, " botellas de ", obj,
+             " mL—. ¿Cuál procedimiento estadístico me permite obtener ",
+             "ese valor representativo?")
+    },
+    protagonistas = c(
+      "el jefe de producción",
+      "la supervisora de turno",
+      "el técnico de laboratorio",
+      "la inspectora de calidad"
+    )
+  ),
+  # Tipo 7: Acción en curso
+  list(
+    plantilla = function(prot, n, obj) {
+      paste0("Durante la auditoría de calidad en ", prot, ", se ",
+             "seleccionaron al azar ", n, " botellas de ", obj,
+             " mL. El auditor debe decidir qué procedimiento estadístico ",
+             "aplicar para determinar la cantidad promedio de agua que ",
+             "contiene una botella del lote.")
+    },
+    protagonistas = c(
+      "la planta de producción de Agua Viva",
+      "la sede principal de Bebidas Refrescantes S.A.",
+      "el centro de distribución de HidroAndes",
+      "la fábrica de Agua de Montaña Ltda."
+    )
+  ),
+  # Tipo 8: Pregunta retórica
+  list(
+    plantilla = function(prot, n, obj) {
+      paste0("¿Cómo puede ", prot, " determinar la cantidad típica de ",
+             "agua que contiene una botella de un lote de ", n, " unidades ",
+             "de ", obj, " mL? Esta es la pregunta que enfrenta todo proceso ",
+             "de control de calidad cuando busca caracterizar un lote ",
+             "de producto.")
+    },
+    protagonistas = c(
+      "un ingeniero de procesos",
+      "una analista de calidad",
+      "un supervisor de línea de producción",
+      "una consultora en mejora de procesos"
+    )
+  )
+)
+
+# Seleccionar contexto
+ctx <- contextos[[sample(length(contextos), 1)]]
+prot <- sample(ctx$protagonistas, 1)
+prot_sentence <- paste0(toupper(substr(prot, 1, 1)), substr(prot, 2, nchar(prot)))
+enunciado_contexto <- ctx$plantilla(prot, n_botellas, cantidad_objetivo)
+
+# ---- Procedimiento correcto (dos pasos: promedio) ----
+procedimiento_correcto <- paste0(
+  "Paso 1: Sumar las cantidades de agua de las ", n_botellas,
+  " botellas del lote.", "<br>",
+  "Paso 2: Dividir el resultado de la suma entre el número total de botellas (",
+  n_botellas, "). El valor obtenido —el promedio— representa la cantidad típica ",
+  "de agua que contiene una botella del lote."
+)
+
+# ---- Pool de procedimientos incorrectos (distractores) ----
+# Cada procedimiento es de dos pasos y aplica una medida estadística distinta
+procedimientos_incorrectos <- list(
+  list(
+    codigo = "EST-PROM-01",
+    nombre = "Confusión del promedio con la mediana",
+    descripcion_corta = paste0(
+      "Paso 1: Ordenar las ", n_botellas,
+      " botellas de menor a mayor cantidad de agua.", "<br>",
+      "Paso 2: Identificar la cantidad de agua de la botella que ocupa la ",
+      "posición central —la mediana— y reportarla como la cantidad típica ",
+      "de agua por botella."
+    ),
+    descripcion_larga = paste0(
+      "Este procedimiento es incorrecto porque la mediana —el valor que ocupa ",
+      "la posición central cuando los datos están ordenados— es una medida de ",
+      "posición, no un promedio aritmético. La mediana divide el conjunto en ",
+      "dos mitades con igual cantidad de datos, pero no incorpora la magnitud ",
+      "de todos los valores en su cálculo. Dos lotes de botellas pueden tener ",
+      "la misma mediana pero promedios muy diferentes si las cantidades ",
+      "extremas están desbalanceadas. Por ejemplo, si la mayoría de las ",
+      "botellas tienen valores cercanos a ", cantidad_objetivo + 20,
+      " mL pero unas pocas tienen valores muy bajos, la mediana seguirá ",
+      "cerca de ", cantidad_objetivo + 20,
+      " mL mientras que el promedio bajará, reflejando mejor la realidad ",
+      "de todas las botellas."
+    ),
+    causa_raiz = paste0(
+      "El estudiante asocia 'valor central' (posición) con 'valor típico' ",
+      "(promedio). Ordenar los datos es un paso común a varios procedimientos, ",
+      "pero el propósito de cada medida es distinto: la mediana busca el centro ",
+      "posicional, mientras que el promedio busca el centro aritmético que ",
+      "incorpora todos los valores."
+    ),
+    precondicion = function(params) TRUE
+  ),
+  list(
+    codigo = "EST-PROM-02",
+    nombre = "Confusión del promedio con la moda",
+    descripcion_corta = paste0(
+      "Paso 1: Contar cuántas botellas tienen cada cantidad de agua.", "<br>",
+      "Paso 2: Identificar la cantidad que aparece con mayor frecuencia ",
+      "—la moda— y reportarla como la cantidad típica de agua por botella."
+    ),
+    descripcion_larga = paste0(
+      "Este procedimiento es incorrecto porque la moda —el valor que aparece ",
+      "con mayor frecuencia en el conjunto— no es un promedio. La moda solo ",
+      "indica cuál es la cantidad de agua más repetida entre las botellas, ",
+      "pero ignora por completo la magnitud de los demás valores. Un lote ",
+      "puede tener la moda en ", cantidad_objetivo, " mL pero contener ",
+      "botellas con cantidades sistemáticamente más altas o más bajas que ",
+      "ese valor modal. Además, en datos continuos como las cantidades de ",
+      "agua —medidas con decimales— es posible que ningún valor se repita, ",
+      "haciendo que la moda no exista o no sea representativa. El promedio, ",
+      "en cambio, siempre existe y utiliza todos los datos en su cálculo."
+    ),
+    causa_raiz = paste0(
+      "El estudiante asocia 'lo más frecuente' con 'lo más representativo'. ",
+      "Si bien en algunos contextos coloquiales la moda puede indicar lo ",
+      "'típico', en estadística el promedio aritmético es la medida diseñada ",
+      "específicamente para representar el valor central de un conjunto ",
+      "cuantitativo usando toda la información disponible."
+    ),
+    precondicion = function(params) TRUE
+  ),
+  list(
+    codigo = "EST-PROM-03",
+    nombre = "Confusión del promedio con el mid-range",
+    descripcion_corta = paste0(
+      "Paso 1: Identificar la botella con mayor cantidad de agua y la botella ",
+      "con menor cantidad de agua del lote de ", n_botellas, ".", "<br>",
+      "Paso 2: Sumar esas dos cantidades y dividir el resultado entre 2. ",
+      "Reportar ese valor como la cantidad típica de agua por botella."
+    ),
+    descripcion_larga = paste0(
+      "Este procedimiento es incorrecto porque calcula el mid-range —el punto ",
+      "medio entre el máximo y el mínimo—, que NO es lo mismo que el promedio ",
+      "aritmético. El mid-range solo utiliza dos de las ", n_botellas,
+      " observaciones (los extremos) e ignora por completo la información ",
+      "contenida en las otras ", n_botellas - 2, " botellas. Si los datos ",
+      "tienen valores atípicos, el mid-range se distorsiona gravemente: una ",
+      "sola botella con una cantidad anómala puede desplazar el mid-range ",
+      "sin que el promedio del lote cambie de forma apreciable. El promedio, ",
+      "al incorporar todos los valores, es mucho más robusto frente a este ",
+      "tipo de distorsiones cuando el tamaño de muestra es grande (",
+      n_botellas, " botellas en este caso)."
+    ),
+    causa_raiz = paste0(
+      "El estudiante reconoce que un promedio involucra 'sumar y dividir', ",
+      "pero aplica estas operaciones a un subconjunto incorrecto de los datos ",
+      "(solo los extremos). No comprende que el promedio aritmético requiere ",
+      "la suma de TODOS los valores del conjunto, no de una muestra parcial."
+    ),
+    precondicion = function(params) TRUE
+  ),
+  list(
+    codigo = "EST-PROM-04",
+    nombre = "Suma sin normalizar (total en lugar de promedio)",
+    descripcion_corta = paste0(
+      "Paso 1: Sumar las cantidades de agua de las ", n_botellas,
+      " botellas del lote.", "<br>",
+      "Paso 2: Reportar el resultado de la suma —el total de agua en el lote— ",
+      "como la cantidad típica de agua por botella."
+    ),
+    descripcion_larga = paste0(
+      "Este procedimiento es incorrecto porque la suma total de todas las ",
+      "cantidades no es un promedio: es una medida de volumen acumulado, no ",
+      "una medida de tendencia central por botella. La suma depende directamente ",
+      "del número de botellas: si se inspeccionan ", n_botellas,
+      " botellas con un promedio de aproximadamente ", round(promedio_real, 0),
+      " mL, la suma total será cercana a ", round(promedio_real * n_botellas, 0),
+      " mL. Reportar ese número como 'cantidad típica por botella' es un error ",
+      "de escala: el valor es ", n_botellas,
+      " veces más grande que el promedio real. El promedio resuelve este ",
+      "problema al dividir la suma entre el número de datos, normalizando ",
+      "el resultado a la escala de una sola observación."
+    ),
+    causa_raiz = paste0(
+      "El estudiante recuerda que el promedio involucra 'sumar' pero olvida ",
+      "el paso de 'dividir entre el número de datos'. Confunde el total ",
+      "acumulado —que es una medida de volumen o cantidad agregada— con el ",
+      "promedio —que es una medida de tendencia central por unidad."
+    ),
+    precondicion = function(params) TRUE
+  ),
+  list(
+    codigo = "EST-PROM-05",
+    nombre = "Usar una sola botella como representante del lote",
+    descripcion_corta = paste0(
+      "Paso 1: Seleccionar una botella al azar del lote de ", n_botellas,
+      ".", "<br>",
+      "Paso 2: Reportar la cantidad de agua de esa única botella como la ",
+      "cantidad típica de agua por botella en todo el lote."
+    ),
+    descripcion_larga = paste0(
+      "Este procedimiento es incorrecto porque una sola observación no puede ",
+      "representar adecuadamente un conjunto de ", n_botellas,
+      " datos. Estadísticamente, una muestra de tamaño 1 tiene un error ",
+      "estándar muy alto y no permite estimar la tendencia central con ",
+      "precisión. La botella seleccionada al azar podría tener, por ejemplo, ",
+      round(cantidad_objetivo + margen * 1.8, 1),
+      " mL, mientras que el verdadero promedio del lote es de aproximadamente ",
+      round(promedio_real, 1), " mL —una diferencia de casi ",
+      round(abs(cantidad_objetivo + margen * 1.8 - promedio_real), 1),
+      " mL—. El promedio, al utilizar los ", n_botellas,
+      " valores, reduce el error de estimación proporcionalmente a ",
+      "la raíz cuadrada del tamaño de muestra, ofreciendo una estimación ",
+      "mucho más precisa de la cantidad típica."
+    ),
+    causa_raiz = paste0(
+      "El estudiante aplica un razonamiento de 'sentido común' —si todas las ",
+      "botellas son del mismo lote, cualquiera sirve para representarlo— sin ",
+      "reconocer la variabilidad inherente al proceso de llenado. La estadística ",
+      "existe precisamente porque las observaciones individuales varían y se ",
+      "necesitan procedimientos que integren múltiples observaciones para ",
+      "obtener estimaciones confiables."
+    ),
+    precondicion = function(params) TRUE
+  ),
+  list(
+    codigo = "EST-PROM-06",
+    nombre = "Confusión del promedio con el rango",
+    descripcion_corta = paste0(
+      "Paso 1: Identificar la botella con mayor cantidad de agua y la botella ",
+      "con menor cantidad de agua del lote de ", n_botellas, ".", "<br>",
+      "Paso 2: Restar la cantidad menor de la cantidad mayor. Reportar el ",
+      "resultado de esa resta —el rango— como la cantidad típica de agua ",
+      "por botella."
+    ),
+    descripcion_larga = paste0(
+      "Este procedimiento es incorrecto por dos razones fundamentales. ",
+      "Primero, el rango es una medida de dispersión —indica qué tan ",
+      "separados están los valores extremos entre sí—, no una medida de ",
+      "tendencia central. El rango responde a la pregunta '¿cuál es la mayor ",
+      "diferencia entre dos botellas?', no a '¿cuál es la cantidad típica de ",
+      "agua por botella?'. Segundo, el valor numérico del rango (",
+      round(rango_real, 1), " mL) está en una escala completamente diferente ",
+      "a la del promedio (aproximadamente ", round(promedio_real, 1),
+      " mL). Reportar el rango como 'cantidad típica' es un error categorial: ",
+      "se está usando una medida de dispersión para responder una pregunta ",
+      "de tendencia central. Es como responder 'la diferencia entre el más ",
+      "alto y el más bajo es 15 cm' cuando preguntan '¿cuánto mide en promedio ",
+      "un estudiante del curso?'."
+    ),
+    causa_raiz = paste0(
+      "El estudiante no distingue entre los tipos de medidas estadísticas. ",
+      "Las medidas de tendencia central (promedio, mediana, moda) describen ",
+      "un valor representativo del conjunto. Las medidas de dispersión (rango, ",
+      "desviación estándar, varianza) describen qué tan esparcidos están los ",
+      "datos. Usar una medida de un tipo para responder una pregunta del otro ",
+      "tipo produce una respuesta numéricamente posible pero conceptualmente ",
+      "incorrecta."
+    ),
+    precondicion = function(params) TRUE
+  )
+)
+
+# ---- Selección aleatoria de distractores ----
+n_distractores <- 3
+idx_seleccionados <- sample.int(length(procedimientos_incorrectos), n_distractores)
+errores_seleccionados <- procedimientos_incorrectos[idx_seleccionados]
+
+# ---- Construir opciones (1 correcta + 3 distractores) ----
+opciones_texto <- c(
+  procedimiento_correcto,
+  sapply(errores_seleccionados, `[[`, "descripcion_corta")
+)
+
+# La correcta es la primera -> exsolution = 1000
+solucion <- c(1L, 0L, 0L, 0L)
+
+# ---- Reflexiones metacognitivas ----
+reflexiones_metacognitivas <- list(
+  "Identificar el procedimiento correcto entre varios que parecen razonables exige examinar cada opción con cuidado en lugar de aceptar la primera que suena plausible. La metacognición nos ayuda a detenernos y verificar antes de decidir.",
+  "En estadística, saber qué mide cada concepto (tendencia central, dispersión, posición, frecuencia) es más importante que saber calcularlos. El promedio, la mediana, la moda, el rango y la desviación estándar responden preguntas distintas.",
+  "Cuando evaluamos un procedimiento estadístico, no basta con que las operaciones estén bien escritas; el procedimiento debe responder exactamente a la pregunta planteada. Sumar y dividir solo produce un promedio si se aplica a todos los datos.",
+  "Un error frecuente en el aprendizaje de estadística es recordar una parte del procedimiento (sumar) y olvidar la otra (dividir entre el número de datos). La memoria parcial puede llevar a conclusiones incorrectas.",
+  "La metacognición en estadística implica preguntarse: ¿este procedimiento responde a la pregunta que tengo? No toda medida sirve para todo propósito. Elegir la medida correcta para cada pregunta es tan importante como calcularla bien.",
+  "Ante procedimientos que usan operaciones similares (sumar, dividir, ordenar, contar), el pensamiento crítico exige verificar sobre qué datos opera cada procedimiento y qué significado tiene el resultado.",
+  "Argumentar por qué un procedimiento estadístico es el adecuado requiere comprender su definición operacional: qué operaciones realiza, sobre qué datos, y qué interpretación permite el resultado obtenido.",
+  "El promedio tiene una propiedad única entre las medidas básicas: utiliza TODOS los valores del conjunto en su cálculo. Esta propiedad lo hace especialmente adecuado cuando se busca un valor representativo de todo el grupo."
+)
+
+reflexion <- reflexiones_metacognitivas[[sample(length(reflexiones_metacognitivas), 1)]]
+
+# ---- Validaciones internas ----
+test_that("Se seleccionaron exactamente 3 distractores", {
+  expect_equal(length(errores_seleccionados), 3)
+})
+
+test_that("Los distractores son distintos entre sí", {
+  codigos <- sapply(errores_seleccionados, `[[`, "codigo")
+  expect_equal(length(unique(codigos)), 3)
+})
+
+test_that("El procedimiento correcto no está entre los distractores", {
+  proc_distractores <- sapply(errores_seleccionados, `[[`, "descripcion_corta")
+  expect_false(any(proc_distractores == procedimiento_correcto))
+})
+
+test_that("solución marca exactamente una opción como correcta", {
+  expect_equal(sum(solucion), 1)
+  expect_equal(length(solucion), 4)
+})
+
+test_that("Precondiciones de procedimientos seleccionados se cumplen", {
+  params <- list(n = n_botellas, cantidades = cantidades)
+  for (err in errores_seleccionados) {
+    if (!is.null(err$precondicion)) {
+      expect_true(err$precondicion(params),
+        info = paste(err$codigo, "seleccionado pero precondición no se cumple"))
+    }
+  }
+})
+```
+
+Question
+========
+
+`r enunciado_contexto`
+
+`r prot_sentence` está evaluando cuál de los siguientes procedimientos de dos pasos permite determinar la cantidad de agua que, en promedio, contiene una botella del lote.
+
+¿Cuál de los siguientes procedimientos es el adecuado para calcular la cantidad típica de agua por botella?
+
+Answerlist
+----------
+
+```{r mostrar_opciones, echo=FALSE, results='asis'}
+for (i in seq_along(opciones_texto)) {
+  cat("* ", opciones_texto[i], "\n", sep = "")
+}
+```
+
+Solution
+========
+
+```{r solution_content, echo=FALSE, results='asis'}
+# ---- Análisis de los procedimientos incorrectos (Parte 1) ----
+cat("**Análisis de los procedimientos incorrectos**\n\n")
+
+for (err in errores_seleccionados) {
+  cat(
+    "**", err$codigo, " — ", err$nombre, "**\n\n",
+    "*Procedimiento evaluado:* \"", err$descripcion_corta, "\"\n\n",
+    err$descripcion_larga, "\n\n",
+    "**Causa raíz del error:** ", err$causa_raiz, "\n\n",
+    "---\n\n",
+    sep = ""
+  )
+}
+
+# ---- Procedimiento correcto (Parte 2) ----
+cat("**Procedimiento correcto: el promedio aritmético**\n\n")
+
+cat(paste0(
+  "**Paso 1: Sumar todas las cantidades.**\n\n",
+  "Se suman las cantidades de agua de las ", n_botellas,
+  " botellas del lote. La suma total es aproximadamente ",
+  round(sum(cantidades), 1), " mL.\n\n",
+  "$$\\text{Suma} = \\sum_{i=1}^{", n_botellas,
+  "} x_i$$\n\n",
+  "**Paso 2: Dividir entre el número de datos.**\n\n",
+  "$$\\text{Promedio} = \\frac{\\text{Suma}}{",
+  n_botellas, "} = \\frac{", round(sum(cantidades), 1),
+  "}{", n_botellas, "} = ", round(promedio_real, 1),
+  "\\text{ mL}$$\n\n",
+  "**Paso 3: Interpretar el resultado.**\n\n",
+  "El valor del promedio (", round(promedio_real, 1),
+  " mL) representa la cantidad típica de agua que contiene una botella ",
+  "del lote. Este valor es representativo porque incorpora la información ",
+  "de todas las botellas inspeccionadas, no solo de unas pocas. Si el ",
+  "promedio se acerca al valor nominal de ", cantidad_objetivo,
+  " mL, el lote está bien calibrado. Si se aleja, puede indicar un ",
+  "problema sistemático en el proceso de llenado.\n\n"
+))
+
+# ---- Propiedades del concepto (Parte 3) ----
+cat("**Propiedades del concepto: el promedio aritmético**\n\n")
+
+cat(paste0(
+  "1. **Definición operacional**: Promedio = Suma de todos los valores ÷ Número ",
+  "de datos. Es la medida de tendencia central más utilizada en estadística.\n\n",
+  "2. **Qué mide exactamente**: El valor central del conjunto en sentido ",
+  "aritmético. Si todos los datos fueran iguales, ese valor sería el promedio.\n\n",
+  "3. **Qué NO mide**: No mide dispersión (rango, desviación estándar), ",
+  "no mide posición central sin considerar magnitud (mediana), ",
+  "no mide frecuencia (moda). Solo mide el centro aritmético del conjunto.\n\n",
+  "4. **Ventaja fundamental**: El promedio utiliza TODOS los valores del ",
+  "conjunto de datos. A diferencia de la mediana —que solo usa la posición— ",
+  "o la moda —que solo usa la frecuencia—, el promedio incorpora la magnitud ",
+  "de cada observación, lo que lo hace más informativo cuando los datos ",
+  "tienen una distribución aproximadamente simétrica.\n\n",
+  "5. **Propiedad del balance**: La suma de las desviaciones de cada valor ",
+  "respecto al promedio siempre es cero: ",
+  "$\\sum (x_i - \\bar{x}) = 0$. Esto significa que el promedio es el punto de equilibrio ",
+  "del conjunto de datos.\n\n",
+  "6. **Sensibilidad**: El promedio es sensible a valores atípicos. Una sola ",
+  "botella con una cantidad extremadamente alta o baja puede desplazar el ",
+  "promedio. Para este problema, sin embargo, esa sensibilidad es una ventaja, ",
+  "porque refleja fielmente la contribución de cada botella al valor ",
+  "representativo del lote.\n\n"
+))
+
+# ---- Caso específico (Parte 4) ----
+cat("**Caso específico: aplicación al lote de botellas**\n\n")
+
+# Generar casos concretos
+set.seed(seed_global + 1)
+caso_simetrico <- round(runif(5, cantidad_objetivo - margen * 0.4, cantidad_objetivo + margen * 0.4), 1)
+set.seed(seed_global + 2)
+caso_asimetrico <- round(c(
+  runif(4, cantidad_objetivo - margen * 0.3, cantidad_objetivo + margen * 0.3),
+  cantidad_objetivo - margen * 2.5
+), 1)
+
+prom_caso_sim <- round(mean(caso_simetrico), 1)
+prom_caso_asim <- round(mean(caso_asimetrico), 1)
+med_caso_asim <- round(median(caso_asimetrico), 1)
+
+cat(paste0(
+  "**Ejemplo 1 — Lote uniforme:**\n\n",
+  "Cinco botellas con cantidades: ", paste(caso_simetrico, collapse = ", "), " mL.\n",
+  "Promedio = (", paste(caso_simetrico, collapse = " + "),
+  ") ÷ 5 = ", prom_caso_sim, " mL.\n",
+  "El promedio (", prom_caso_sim, " mL) refleja fielmente la cantidad típica ",
+  "porque todas las botellas tienen valores cercanos entre sí.\n\n",
+  "**Ejemplo 2 — Lote con valor extremo:**\n\n",
+  "Cinco botellas con cantidades: ", paste(caso_asimetrico, collapse = ", "), " mL.\n",
+  "Promedio = ", prom_caso_asim, " mL.\n",
+  "Mediana = ", med_caso_asim, " mL.\n\n",
+  "Observación: el promedio (", prom_caso_asim,
+  " mL) es menor que la mediana (", med_caso_asim,
+  " mL) porque incorpora la botella con poca agua en su cálculo. ",
+  "La mediana, en cambio, ignora la magnitud de ese valor extremo. ",
+  "El promedio da una imagen más completa de la realidad del lote: ",
+  "una botella con poca agua afecta la cantidad típica disponible.\n\n"
+))
+
+# ---- Reflexión metacognitiva (Parte 5) ----
+cat("**Reflexión metacognitiva**\n\n")
+cat(reflexion, "\n\n")
+
+# ---- Estrategia para evitar el error (Parte 6) ----
+cat("**Estrategia para no confundir el promedio con otras medidas**\n\n")
+cat(paste0(
+  "1. **Preguntarse qué operaciones realiza el procedimiento**: ¿Suma y divide ",
+  "entre el número total de datos? (promedio). ¿Ordena y toma la posición ",
+  "central? (mediana). ¿Cuenta frecuencias? (moda). ¿Resta extremos? (rango).\n\n",
+  "2. **Verificar que el resultado tenga las unidades correctas**: El promedio ",
+  "debe expresarse en las mismas unidades que los datos originales (mL por ",
+  "botella). Si el resultado está en 'mL totales', no es un promedio.\n\n",
+  "3. **Comprobar que se usan todos los datos**: Si el procedimiento descarta ",
+  "información —usa solo un dato, solo dos extremos, solo la posición—, no ",
+  "está calculando un promedio aritmético genuino.\n\n",
+  "4. **Relacionar el procedimiento con la pregunta**: '¿Cuál es la cantidad ",
+  "típica por botella?' La palabra 'típica' indica una medida de tendencia ",
+  "central. Entre las medidas básicas, el promedio es la que utiliza toda ",
+  "la información disponible de la manera más directa.\n\n",
+  "5. **Practicar con contraejemplos**: Para cada procedimiento, preguntarse: ",
+  "'¿Puedo construir un conjunto de datos donde este procedimiento dé un ",
+  "valor que no representa la cantidad típica?' Si la respuesta es sí, ese ",
+  "procedimiento no es adecuado para el problema.\n"
+))
+
+# ---- Respuesta correcta identificada por contenido (regla #19) ----
+cat("**Procedimiento correcto**\n\n")
+cat("El procedimiento que calcula el promedio aritmético:\n\n")
+cat("> \"", procedimiento_correcto, "\"\n\n", sep = "")
+
+cat(paste0(
+  "Este procedimiento es correcto porque:\n\n",
+  "- Define con precisión qué es el promedio (suma de todos los valores ",
+  "dividida entre el número de datos).\n",
+  "- Sus dos pasos (sumar todas las cantidades, dividir entre el número de ",
+  "botellas) garantizan obtener un valor representativo de la cantidad típica ",
+  "de agua por botella.\n",
+  "- Utiliza la totalidad de los datos disponibles (las ", n_botellas,
+  " botellas), no un subconjunto arbitrario.\n",
+  "- El resultado se expresa en las unidades correctas (mL por botella) y ",
+  "responde directamente a la pregunta sobre la cantidad típica de agua.\n",
+  "- A diferencia de la mediana (que solo mira la posición), la moda (que ",
+  "solo mira la frecuencia) o el rango (que mide dispersión), el promedio ",
+  "es la medida diseñada específicamente para caracterizar el valor central ",
+  "de un conjunto de datos cuantitativos.\n"
+))
+```
+
+Meta-information
+================
+exname: promedio_cantidad_botellas_metacognitivo_argumentacion_n3_schoice_v2
+extype: schoice
+exsolution: `r paste(solucion, collapse = "")`
+exshuffle: TRUE
+extol: 0.01
+exextra[Type]: SCHOICE
+exextra[Competencia]: Argumentación
+exextra[Componente]: Aleatorio
+exextra[Afirmacion]: Valida procedimientos y estrategias matemáticas utilizadas para dar solución a problemas.
+exextra[Evidencia]: Argumenta a favor o en contra de un procedimiento para resolver un problema a la luz de criterios presentados o establecidos.
+exextra[Aprendizaje]: Distingue el promedio aritmético de otras medidas estadísticas (mediana, moda, mid-range, rango) y argumenta por qué es la medida adecuada para determinar la cantidad típica de un conjunto de datos cuantitativos.
+exextra[Tarea]: Ante cuatro procedimientos de dos pasos que aplican distintas medidas estadísticas a un conjunto de datos cuantitativos, argumentar cuál de ellos permite calcular la cantidad típica (promedio) por elemento del conjunto.
+exextra[Nivel]: 3
+exextra[DOK]: 3
+exextra[Bloom]: Evaluar
+exextra[SOLO]: Relacional
+exextra[TipoMetacognicion]: comparacion_procedimientos
+exextra[Tema]: Medidas de tendencia central: promedio aritmético
+exextra[Descriptor]: D3.10

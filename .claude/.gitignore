@@ -1,0 +1,16 @@
+# .claude/.gitignore
+# Solo se excluye configuracion local y codigo externo no mantenido.
+# TODO lo demas (rules/, scripts/, hooks/, skills/, agents/, commands/,
+# docs/, schemas/, CLAUDE.md, detractor-config.yaml) se versiona.
+#
+# Ver: ADR en .claude/rules/infraestructura-protegida.md
+#      Regla #17 — Infraestructura .claude/ Protegida
+
+# Configuracion local de MCP servers, hooks paths, entorno
+settings.json
+settings.local.json
+settings.json.pre-*
+
+# Plataforma externa Ruflo/claude-flow (40+ archivos, ~9500 lineas)
+# No es infraestructura ICFES — fue instalado por npx @claude-flow/cli
+helpers/
