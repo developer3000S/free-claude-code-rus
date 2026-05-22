@@ -5,7 +5,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from config.nim import NimSettings
-from config.provider_catalog import PROVIDER_CATALOG, ZAI_DEFAULT_BASE
+from config.provider_catalog import (
+    PROVIDER_CATALOG,
+    TUNING_ENGINES_DEFAULT_BASE,
+    ZAI_DEFAULT_BASE,
+)
 from config.provider_ids import SUPPORTED_PROVIDER_IDS
 from providers.deepseek import DeepSeekProvider
 from providers.exceptions import UnknownProviderTypeError
@@ -21,6 +25,7 @@ from providers.registry import (
     build_provider_config,
     create_provider,
 )
+from providers.tuning_engines import TuningEnginesProvider
 from providers.wafer import WaferProvider
 from providers.zai import ZaiProvider
 
@@ -35,6 +40,8 @@ def _make_settings(**overrides):
     mock.wafer_api_key = "test_wafer_key"
     mock.opencode_api_key = "test_opencode_key"
     mock.zai_api_key = "test_zai_key"
+    mock.fireworks_api_key = "test_fireworks_key"
+    mock.tuning_engines_api_key = "test_tuning_engines_key"
     mock.lm_studio_base_url = "http://localhost:1234/v1"
     mock.llamacpp_base_url = "http://localhost:8080/v1"
     mock.ollama_base_url = "http://localhost:11434"
@@ -47,6 +54,8 @@ def _make_settings(**overrides):
     mock.opencode_proxy = ""
     mock.opencode_go_proxy = ""
     mock.zai_proxy = ""
+    mock.fireworks_proxy = ""
+    mock.tuning_engines_proxy = ""
     mock.provider_rate_limit = 40
     mock.provider_rate_window = 60
     mock.provider_max_concurrency = 5
@@ -110,6 +119,13 @@ def test_zai_provider_config_ignores_stale_base_url_setting():
     assert config.base_url == ZAI_DEFAULT_BASE
 
 
+def test_tuning_engines_descriptor_uses_fixed_cloud_base_url():
+    descriptor = PROVIDER_DESCRIPTORS["tuning_engines"]
+
+    assert descriptor.default_base_url == TUNING_ENGINES_DEFAULT_BASE
+    assert descriptor.base_url_attr is None
+
+
 def test_opencode_go_provider_config_uses_correct_base_url_and_name():
     with patch("httpx.AsyncClient"):
         provider = create_provider("opencode_go", _make_settings())
@@ -155,6 +171,7 @@ def test_create_provider_instantiates_each_builtin():
         "opencode": OpenCodeProvider,
         "opencode_go": OpenCodeProvider,
         "zai": ZaiProvider,
+        "tuning_engines": TuningEnginesProvider,
     }
 
     with (

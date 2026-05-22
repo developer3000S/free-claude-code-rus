@@ -37,7 +37,7 @@ Free Claude Code routes Anthropic Messages API traffic from Claude Code to any p
 ## What You Get
 
 - Drop-in proxy for Claude Code's Anthropic API calls.
-- Eleven provider backends: NVIDIA NIM, Kimi, Wafer, OpenRouter, DeepSeek, LM Studio, llama.cpp, Ollama, OpenCode Zen, OpenCode Go, and Z.ai.
+- Provider backends include NVIDIA NIM, Kimi, Wafer, OpenRouter, DeepSeek, LM Studio, llama.cpp, Ollama, OpenCode Zen, OpenCode Go, Z.ai, Fireworks AI, and Tuning Engines.
 - Per-model routing: send Opus, Sonnet, Haiku, and fallback traffic to different providers.
 - Native Claude Code `/model` picker support through the proxy's `/v1/models` endpoint (Claude Code must opt in to Gateway model discovery; see [Model Picker](#model-picker)).
 - Streaming, tool use, reasoning/thinking block handling, and local request optimizations.
@@ -251,7 +251,23 @@ Popular examples:
 
 Browse models at [Z.ai](https://z.ai).
 
-### 12. Mix Providers By Model Tier
+### 12. [Tuning Engines](https://tuningengines.com/)
+
+Create an inference key in the Tuning Engines dashboard under **Inference → Keys**, then paste it into `TUNING_ENGINES_API_KEY` in the Admin UI.
+
+Set `MODEL` to a Tuning Engines model slug such as `tuning_engines/llama-3.3-70b-fp8`.
+
+Tuning Engines provides an OpenAI-compatible governed AI gateway for models, agents, MCP tools, skills, routing, guardrails, traces, budgets, and fine-tuning workflows at `https://api.tuningengines.com/v1`.
+
+Popular examples:
+
+- `tuning_engines/llama-3.3-70b-fp8`
+- `tuning_engines/qwen-2.5-coder-32b`
+- `tuning_engines/kimi-k2`
+
+Browse and enable models in the Tuning Engines Resource Catalog.
+
+### 13. Mix Providers By Model Tier
 
 Each model tier can use a different provider by setting `MODEL_OPUS`, `MODEL_SONNET`, and `MODEL_HAIKU` in the Admin UI. Leave a tier blank to inherit `MODEL`.
 
@@ -384,6 +400,7 @@ Important pieces:
 - Model routing resolves the Claude model name to `MODEL_OPUS`, `MODEL_SONNET`, `MODEL_HAIKU`, or `MODEL`.
 - NIM, OpenCode Zen, OpenCode Go, Z.ai use OpenAI chat streaming translated into Anthropic SSE.
 - Wafer, OpenRouter, DeepSeek, LM Studio, llama.cpp, and Ollama use Anthropic Messages style transports.
+- Tuning Engines uses an OpenAI-compatible chat-completions transport.
 - The proxy normalizes thinking blocks, tool calls, token usage metadata, and provider errors into the shape Claude Code expects.
 - Request optimizations answer trivial Claude Code probes locally to save latency and quota.
 

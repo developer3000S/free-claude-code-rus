@@ -20,6 +20,7 @@ DEEPSEEK_ANTHROPIC_DEFAULT_BASE = "https://api.deepseek.com/anthropic"
 # Historical export name: DeepSeek upstream is the native Anthropic path above.
 DEEPSEEK_DEFAULT_BASE = DEEPSEEK_ANTHROPIC_DEFAULT_BASE
 FIREWORKS_DEFAULT_BASE = "https://api.fireworks.ai/inference/v1"
+TUNING_ENGINES_DEFAULT_BASE = "https://api.tuningengines.com/v1"
 OPENROUTER_DEFAULT_BASE = "https://openrouter.ai/api/v1"
 LMSTUDIO_DEFAULT_BASE = "http://localhost:1234/v1"
 LLAMACPP_DEFAULT_BASE = "http://localhost:8080/v1"
@@ -165,6 +166,16 @@ PROVIDER_CATALOG: dict[str, ProviderDescriptor] = {
         credential_attr="fireworks_api_key",
         default_base_url=FIREWORKS_DEFAULT_BASE,
         proxy_attr="fireworks_proxy",
+        capabilities=("chat", "streaming", "tools", "thinking", "rate_limit"),
+    ),
+    "tuning_engines": ProviderDescriptor(
+        provider_id="tuning_engines",
+        transport_type="openai_chat",
+        credential_env="TUNING_ENGINES_API_KEY",
+        credential_url="https://app.tuningengines.com/inference/keys",
+        credential_attr="tuning_engines_api_key",
+        default_base_url=TUNING_ENGINES_DEFAULT_BASE,
+        proxy_attr="tuning_engines_proxy",
         capabilities=("chat", "streaming", "tools", "thinking", "rate_limit"),
     ),
 }

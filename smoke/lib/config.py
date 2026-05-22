@@ -52,6 +52,7 @@ PROVIDER_SMOKE_DEFAULT_MODELS: dict[str, str] = {
     "opencode": "opencode/gpt-5.3-codex",
     "opencode_go": "opencode_go/minimax-m2.7",
     "zai": "zai/glm-5.1",
+    "tuning_engines": "tuning_engines/llama-3.3-70b-fp8",
 }
 
 NVIDIA_NIM_CLI_DEFAULT_MODELS: tuple[str, ...] = (
@@ -238,6 +239,8 @@ class SmokeConfig:
             return bool(self.settings.opencode_api_key.strip())
         if provider == "zai":
             return bool(self.settings.zai_api_key.strip())
+        if provider == "tuning_engines":
+            return bool(self.settings.tuning_engines_api_key.strip())
         return False
 
 

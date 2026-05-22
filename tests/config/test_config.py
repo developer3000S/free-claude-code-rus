@@ -763,6 +763,10 @@ class TestPerModelMapping:
         assert Settings.parse_provider_type("llamacpp/model") == "llamacpp"
         assert Settings.parse_provider_type("ollama/llama3.1") == "ollama"
         assert Settings.parse_provider_type("wafer/DeepSeek-V4-Pro") == "wafer"
+        assert (
+            Settings.parse_provider_type("tuning_engines/llama-3.3-70b-fp8")
+            == "tuning_engines"
+        )
 
     def test_parse_model_name(self):
         """parse_model_name extracts model name from model string."""

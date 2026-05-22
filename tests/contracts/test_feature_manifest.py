@@ -12,6 +12,7 @@ from providers.nvidia_nim import NvidiaNimProvider
 from providers.ollama import OllamaProvider
 from providers.open_router import OpenRouterProvider
 from providers.opencode import OpenCodeProvider
+from providers.tuning_engines import TuningEnginesProvider
 from providers.wafer import WaferProvider
 from providers.zai import ZaiProvider
 from smoke.features import FEATURE_INVENTORY, README_FEATURES, feature_ids
@@ -80,6 +81,7 @@ def test_provider_and_platform_registries_include_advertised_builtins() -> None:
         "opencode": OpenCodeProvider,
         "opencode_go": OpenCodeProvider,
         "zai": ZaiProvider,
+        "tuning_engines": TuningEnginesProvider,
     }
     for provider_class in provider_classes.values():
         assert issubclass(provider_class, BaseProvider)
