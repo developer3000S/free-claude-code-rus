@@ -29,6 +29,7 @@ def _settings(**overrides):
         "wafer_api_key": "",
         "opencode_api_key": "",
         "zai_api_key": "",
+        "nemoclaw_api_key": "",
         "lm_studio_base_url": "",
         "llamacpp_base_url": "",
         "ollama_base_url": "http://localhost:11434",

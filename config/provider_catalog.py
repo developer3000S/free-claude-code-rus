@@ -27,6 +27,7 @@ OLLAMA_DEFAULT_BASE = "http://localhost:11434"
 OPENCODE_DEFAULT_BASE = "https://opencode.ai/zen/v1"
 OPENCODE_GO_DEFAULT_BASE = "https://opencode.ai/zen/go/v1"
 ZAI_DEFAULT_BASE = "https://api.z.ai/api/coding/paas/v4"
+NEMOCLAW_DEFAULT_BASE = "https://api.nemoclaw.com"
 
 
 @dataclass(frozen=True, slots=True)
@@ -166,6 +167,16 @@ PROVIDER_CATALOG: dict[str, ProviderDescriptor] = {
         default_base_url=FIREWORKS_DEFAULT_BASE,
         proxy_attr="fireworks_proxy",
         capabilities=("chat", "streaming", "tools", "thinking", "rate_limit"),
+    ),
+    "nemoclaw": ProviderDescriptor(
+        provider_id="nemoclaw",
+        transport_type="anthropic_messages",
+        credential_env="NEMOCLAW_API_KEY",
+        credential_attr="nemoclaw_api_key",
+        default_base_url=NEMOCLAW_DEFAULT_BASE,
+        base_url_attr="nemoclaw_base_url",
+        proxy_attr="nemoclaw_proxy",
+        capabilities=("chat", "streaming"),
     ),
 }
 
