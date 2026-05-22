@@ -49,12 +49,20 @@ class OpenRouterProvider(AnthropicMessagesTransport):
 
     def _request_headers(self) -> dict[str, str]:
         """Return OpenRouter's Anthropic-compatible messages headers."""
-        return {
+        from config.settings import get_settings
+
+        settings = get_settings()
+        headers = {
             "Accept": "text/event-stream",
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
             "anthropic-version": _ANTHROPIC_VERSION,
         }
+        if settings.open_router_referer:
+            headers["HTTP-Referer"] = settings.open_router_referer
+        if settings.open_router_title:
+            headers["X-Title"] = settings.open_router_title
+        return headers
 
     def _model_list_headers(self) -> dict[str, str]:
         """Return OpenRouter's OpenAI-compatible model-list headers."""
@@ -102,6 +110,19 @@ class OpenRouterProvider(AnthropicMessagesTransport):
                 event, state, thinking_enabled=thinking_enabled
             )
         return event
+
+    async def _send_stream_request(self, body: dict) -> Any:
+        """Create a streaming messages response and log OpenRouter cost headers."""
+        response = await super()._send_stream_request(body)
+        # Log usage/cost headers when available (non-blocking)
+        try:
+            usage = response.headers.get("x-request-usage") or response.headers.get("X-Request-Usage")
+            if usage:
+                from loguru import logger
+                logger.debug("OPENROUTER_COST: model={} usage={}", body.get("model"), usage)
+        except Exception:
+            pass
+        return response
 
     def _format_error_message(self, base_message: str, request_id: str | None) -> str:
         """Keep OpenRouter's existing request-id suffix format."""

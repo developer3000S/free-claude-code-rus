@@ -137,8 +137,10 @@ def sanitize_native_messages_thinking_policy(
     When ``thinking_enabled`` is false, remove ``thinking`` and ``redacted_thinking``
     history so disabled policy is not undermined by prior turns.
 
-    When true, keep ``redacted_thinking`` and signed ``thinking``; remove only
-    unsigned plain ``thinking`` blocks (not replayable).
+    When true, remove ``redacted_thinking`` (not replayable cross-session) and
+    unsigned plain ``thinking`` blocks; keep only signed ``thinking``.
+
+    Image and other content blocks are always preserved.
     """
     if not isinstance(messages, list):
         return messages
@@ -173,7 +175,7 @@ def sanitize_native_messages_thinking_policy(
                 for block in content
                 if not (
                     isinstance(block, dict)
-                    and block.get("type") == "thinking"
+                    and block.get("type") in ("thinking", "redacted_thinking")
                     and not isinstance(block.get("signature"), str)
                 )
             ]

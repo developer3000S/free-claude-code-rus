@@ -17,6 +17,7 @@ from core.anthropic.sse import ANTHROPIC_SSE_RESPONSE_HEADERS
 from core.trace import api_messages_request_snapshot, trace_event, traced_async_stream
 from providers.base import BaseProvider
 from providers.exceptions import InvalidRequestError, ProviderError
+from providers.rate_limit import retryable_upstream_status
 
 from .model_router import ModelRouter
 from .models.anthropic import MessagesRequest, TokenCountRequest
@@ -99,6 +100,58 @@ class ClaudeProxyService:
         self._model_router = model_router or ModelRouter(settings)
         self._token_counter = token_counter
 
+    async def _attempt_fallback_stream(
+        self,
+        primary_stream: AsyncIterator[str],
+        fallback_model_ref: str,
+        original_request: MessagesRequest,
+        input_tokens: int,
+        request_id: str,
+        thinking_enabled: bool | None,
+    ) -> AsyncIterator[str]:
+        """Try the primary stream; on transient failure switch to fallback model."""
+        try:
+            first_chunk = await primary_stream.__anext__()
+        except Exception as exc:
+            status = retryable_upstream_status(exc)
+            if status is None:
+                raise
+            logger.warning(
+                "Primary stream failed (status={}), attempting fallback model: {}",
+                status,
+                fallback_model_ref,
+            )
+            trace_event(
+                stage="routing",
+                event="api.fallback.triggered",
+                source="api",
+                reason=str(status),
+                fallback_model=fallback_model_ref,
+            )
+            # Build fallback request
+            fallback_request = original_request.model_copy(deep=True)
+            fallback_request.model = fallback_model_ref
+            # Resolve fallback routing
+            fallback_routed = self._model_router.resolve_messages_request(fallback_request)
+            fallback_provider = self._provider_getter(fallback_routed.resolved.provider_id)
+            fallback_provider.preflight_stream(
+                fallback_routed.request,
+                thinking_enabled=fallback_routed.resolved.thinking_enabled,
+            )
+            async for chunk in fallback_provider.stream_response(
+                fallback_routed.request,
+                input_tokens=input_tokens,
+                request_id=request_id,
+                thinking_enabled=fallback_routed.resolved.thinking_enabled,
+            ):
+                yield chunk
+            return
+
+        # Primary succeeded — yield the first chunk then continue
+        yield first_chunk
+        async for chunk in primary_stream:
+            yield chunk
+
     def create_message(self, request_data: MessagesRequest) -> object:
         """Create a message response or streaming response."""
         try:
@@ -149,6 +202,15 @@ class ClaudeProxyService:
                 return optimized
             logger.debug("No optimization matched, routing to provider")
 
+            # Warn about OpenRouter free-tier models (aggressive rate limits)
+            if routed.resolved.provider_model.endswith(":free"):
+                logger.warning(
+                    "Routing to OpenRouter free-tier model '{}'. "
+                    "These models have aggressive rate limits. "
+                    "Consider switching to a paid variant or setting OPENROUTER_FALLBACK_MODEL.",
+                    routed.resolved.provider_model,
+                )
+
             provider = self._provider_getter(routed.resolved.provider_id)
             provider.preflight_stream(
                 routed.request,
@@ -187,13 +249,27 @@ class ClaudeProxyService:
                     routed.request.tools,
                 )
 
-                streamed = traced_async_stream(
-                    provider.stream_response(
-                        routed.request,
-                        input_tokens=input_tokens,
-                        request_id=request_id,
+                primary_stream = provider.stream_response(
+                    routed.request,
+                    input_tokens=input_tokens,
+                    request_id=request_id,
+                    thinking_enabled=routed.resolved.thinking_enabled,
+                )
+
+                # Attempt fallback on transient upstream failures
+                fallback_model_ref = self._settings.model_fallback or self._settings.open_router_fallback_model
+                if fallback_model_ref and routed.resolved.provider_model.endswith(":free"):
+                    primary_stream = self._attempt_fallback_stream(
+                        primary_stream,
+                        fallback_model_ref,
+                        request_data,
+                        input_tokens,
+                        request_id,
                         thinking_enabled=routed.resolved.thinking_enabled,
-                    ),
+                    )
+
+                streamed = traced_async_stream(
+                    primary_stream,
                     stage="egress",
                     source="api",
                     complete_event="api.response.stream_completed",

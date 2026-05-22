@@ -109,6 +109,16 @@ class Settings(BaseSettings):
 
     # ==================== OpenRouter Config ====================
     open_router_api_key: str = Field(default="", validation_alias="OPENROUTER_API_KEY")
+    open_router_referer: str = Field(
+        default="https://github.com/Alishahryar1/free-claude-code",
+        validation_alias="OPENROUTER_HTTP_REFERER",
+    )
+    open_router_title: str = Field(
+        default="Free Claude Code", validation_alias="OPENROUTER_X_TITLE"
+    )
+    open_router_fallback_model: str | None = Field(
+        default=None, validation_alias="OPENROUTER_FALLBACK_MODEL"
+    )
 
     # ==================== DeepSeek Config ====================
     deepseek_api_key: str = Field(default="", validation_alias="DEEPSEEK_API_KEY")
@@ -172,6 +182,9 @@ class Settings(BaseSettings):
     model_opus: str | None = Field(default=None, validation_alias="MODEL_OPUS")
     model_sonnet: str | None = Field(default=None, validation_alias="MODEL_SONNET")
     model_haiku: str | None = Field(default=None, validation_alias="MODEL_HAIKU")
+
+    # Global fallback model when the primary returns an error (any provider)
+    model_fallback: str | None = Field(default=None, validation_alias="MODEL_FALLBACK")
 
     # ==================== Per-Provider Proxy ====================
     nvidia_nim_proxy: str = Field(default="", validation_alias="NVIDIA_NIM_PROXY")
@@ -330,6 +343,8 @@ class Settings(BaseSettings):
         "model_opus",
         "model_sonnet",
         "model_haiku",
+        "model_fallback",
+        "open_router_fallback_model",
         "enable_opus_thinking",
         "enable_sonnet_thinking",
         "enable_haiku_thinking",
@@ -442,6 +457,32 @@ class Settings(BaseSettings):
             raise ValueError(
                 "NVIDIA_NIM_API_KEY is required when WHISPER_DEVICE is 'nvidia_nim'. "
                 "Set it in your .env file."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def default_model_from_configured_provider(self) -> Settings:
+        """When MODEL is still the factory default and no NIM key is set,
+        but an OpenRouter key is present, switch the default to a sensible
+        OpenRouter model so the proxy works out-of-the-box."""
+        if self.model != "nvidia_nim/z-ai/glm4.7":
+            return self
+        if self.nvidia_nim_api_key.strip():
+            return self
+        if self.open_router_api_key.strip():
+            self.model = "open_router/anthropic/claude-sonnet-4"
+            logger.info(
+                "Default model auto-selected for OpenRouter: {}", self.model
+            )
+        elif self.deepseek_api_key.strip():
+            self.model = "deepseek/deepseek-chat"
+            logger.info(
+                "Default model auto-selected for DeepSeek: {}", self.model
+            )
+        elif self.kimi_api_key.strip():
+            self.model = "kimi/kimi-k2.5"
+            logger.info(
+                "Default model auto-selected for Kimi: {}", self.model
             )
         return self
 

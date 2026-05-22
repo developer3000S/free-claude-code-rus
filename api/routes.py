@@ -152,6 +152,21 @@ def _build_models_list_response(
     for model in SUPPORTED_CLAUDE_MODELS:
         _append_unique_model(models, seen, model)
 
+    # Pass-through: any claude- model id requested by the client that we don't
+    # explicitly list is still advertised so Claude Code can select it.
+    # This avoids breakage when Anthropic ships new model ids.
+    for ref in settings.configured_chat_model_refs():
+        if ref.provider_id == "open_router" and ref.model_id.startswith("anthropic/claude-"):
+            claude_id = ref.model_id.split("/", 1)[1]
+            _append_unique_model(
+                models,
+                seen,
+                _discovered_model_response(
+                    claude_id,
+                    display_name=claude_id,
+                ),
+            )
+
     return ModelsListResponse(
         data=models,
         first_id=models[0].id if models else None,
