@@ -801,3 +801,75 @@ class TestPerModelMapping:
         assert refs[1].provider_id == "open_router"
         assert refs[1].model_id == "anthropic/claude-opus"
         assert refs[1].sources == ("MODEL_OPUS",)
+
+
+class TestModelChain:
+    """Comma-separated MODEL_* values define an ordered fallback chain."""
+
+    def test_split_model_chain_handles_none_and_empty(self):
+        from config.settings import Settings
+
+        assert Settings.split_model_chain(None) == ()
+        assert Settings.split_model_chain("") == ()
+        assert Settings.split_model_chain("   ") == ()
+
+    def test_split_model_chain_trims_and_keeps_order(self):
+        from config.settings import Settings
+
+        chain = Settings.split_model_chain(
+            "nvidia_nim/a, open_router/b:free , nvidia_nim/c"
+        )
+        assert chain == ("nvidia_nim/a", "open_router/b:free", "nvidia_nim/c")
+
+    def test_validator_accepts_comma_separated_chain(self, monkeypatch):
+        from config.settings import Settings
+
+        monkeypatch.setenv(
+            "MODEL_OPUS", "nvidia_nim/big, open_router/qwen/qwen3-coder:free"
+        )
+        s = Settings()
+        # Validator normalizes whitespace and stores the canonical form.
+        assert s.model_opus == "nvidia_nim/big,open_router/qwen/qwen3-coder:free"
+
+    def test_validator_rejects_unknown_provider_in_chain(self, monkeypatch):
+        from config.settings import Settings
+
+        monkeypatch.setenv("MODEL_OPUS", "nvidia_nim/ok, badprovider/x")
+        with pytest.raises(ValueError):
+            Settings()
+
+    def test_resolve_model_chain_returns_full_list(self, monkeypatch):
+        from config.settings import Settings
+
+        monkeypatch.setenv(
+            "MODEL_HAIKU", "nvidia_nim/a,open_router/b:free,nvidia_nim/c"
+        )
+        s = Settings()
+        chain = s.resolve_model_chain("claude-3-haiku-20240307")
+        assert chain == (
+            "nvidia_nim/a",
+            "open_router/b:free",
+            "nvidia_nim/c",
+        )
+
+    def test_resolve_model_returns_first_chain_entry(self, monkeypatch):
+        from config.settings import Settings
+
+        monkeypatch.setenv("MODEL_SONNET", "nvidia_nim/primary,open_router/backup:free")
+        s = Settings()
+        assert s.resolve_model("claude-sonnet-4") == "nvidia_nim/primary"
+
+    def test_chain_entries_advertised_individually_in_chat_refs(self):
+        from config.settings import Settings
+
+        s = Settings()
+        s.model = "nvidia_nim/fallback"
+        s.model_opus = "nvidia_nim/big,open_router/anthropic/claude-opus"
+        s.model_sonnet = None
+        s.model_haiku = None
+
+        refs = {ref.model_ref: ref for ref in s.configured_chat_model_refs()}
+        assert "nvidia_nim/big" in refs
+        assert "open_router/anthropic/claude-opus" in refs
+        assert refs["nvidia_nim/big"].sources == ("MODEL_OPUS",)
+        assert refs["open_router/anthropic/claude-opus"].sources == ("MODEL_OPUS",)

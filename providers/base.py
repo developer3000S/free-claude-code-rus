@@ -139,8 +139,16 @@ class BaseProvider(ABC):
         *,
         request_id: str | None = None,
         thinking_enabled: bool | None = None,
+        raise_pre_stream_errors: bool = False,
     ) -> AsyncIterator[str]:
-        """Stream response in Anthropic SSE format."""
+        """Stream response in Anthropic SSE format.
+
+        When ``raise_pre_stream_errors`` is True, the provider raises the mapped
+        :class:`providers.exceptions.ProviderError` (or transport exception)
+        instead of emitting an Anthropic SSE error sequence when the upstream
+        fails before any real content has been streamed. This lets a caller
+        attempt fallback to a different provider.
+        """
         # Typing: abstract async generators need a yield for AsyncIterator[str]
         # inference; this branch is never executed.
         if False:

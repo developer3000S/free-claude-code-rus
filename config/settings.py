@@ -420,17 +420,32 @@ class Settings(BaseSettings):
     def validate_model_format(cls, v: str | None) -> str | None:
         if v is None:
             return None
-        if "/" not in v:
-            raise ValueError(
-                f"Model must be prefixed with provider type. "
-                f"Valid providers: {', '.join(SUPPORTED_PROVIDER_IDS)}. "
-                f"Format: provider_type/model/name"
-            )
-        provider = v.split("/", 1)[0]
-        if provider not in SUPPORTED_PROVIDER_IDS:
-            supported = ", ".join(f"'{p}'" for p in SUPPORTED_PROVIDER_IDS)
-            raise ValueError(f"Invalid provider: '{provider}'. Supported: {supported}")
-        return v
+        entries = [entry.strip() for entry in v.split(",") if entry.strip()]
+        if not entries:
+            raise ValueError("Model must not be empty")
+        normalized: list[str] = []
+        for entry in entries:
+            if "/" not in entry:
+                raise ValueError(
+                    f"Model entry {entry!r} must be prefixed with provider type. "
+                    f"Valid providers: {', '.join(SUPPORTED_PROVIDER_IDS)}. "
+                    f"Format: provider_type/model/name"
+                )
+            provider = entry.split("/", 1)[0]
+            if provider not in SUPPORTED_PROVIDER_IDS:
+                supported = ", ".join(f"'{p}'" for p in SUPPORTED_PROVIDER_IDS)
+                raise ValueError(
+                    f"Invalid provider in {entry!r}: '{provider}'. Supported: {supported}"
+                )
+            normalized.append(entry)
+        return ",".join(normalized)
+
+    @staticmethod
+    def split_model_chain(model_ref: str | None) -> tuple[str, ...]:
+        """Split a comma-separated MODEL_* value into ordered provider/model entries."""
+        if not model_ref:
+            return ()
+        return tuple(part.strip() for part in model_ref.split(",") if part.strip())
 
     @model_validator(mode="after")
     def check_nvidia_nim_api_key(self) -> Settings:
@@ -470,22 +485,31 @@ class Settings(BaseSettings):
         return Settings.parse_model_name(self.model)
 
     def resolve_model(self, claude_model_name: str) -> str:
-        """Resolve a Claude model name to the configured provider/model string.
+        """Resolve a Claude model name to the FIRST configured provider/model string.
 
-        Classifies the incoming Claude model (opus/sonnet/haiku) and
-        returns the model-specific override if configured, otherwise the fallback MODEL.
+        Kept for backward-compat call sites. Use ``resolve_model_chain`` to get
+        the full ordered list of fallback candidates.
         """
+        chain = self.resolve_model_chain(claude_model_name)
+        return chain[0] if chain else self.model
+
+    def resolve_model_chain(self, claude_model_name: str) -> tuple[str, ...]:
+        """Resolve a Claude model name to the ordered chain of fallback provider/model refs."""
         name_lower = claude_model_name.lower()
         if "opus" in name_lower and self.model_opus is not None:
-            return self.model_opus
+            return Settings.split_model_chain(self.model_opus)
         if "haiku" in name_lower and self.model_haiku is not None:
-            return self.model_haiku
+            return Settings.split_model_chain(self.model_haiku)
         if "sonnet" in name_lower and self.model_sonnet is not None:
-            return self.model_sonnet
-        return self.model
+            return Settings.split_model_chain(self.model_sonnet)
+        return Settings.split_model_chain(self.model)
 
     def configured_chat_model_refs(self) -> tuple[ConfiguredChatModelRef, ...]:
-        """Return unique configured chat provider/model refs with source env keys."""
+        """Return unique configured chat provider/model refs with source env keys.
+
+        Comma-separated MODEL_* values are expanded so every fallback entry is
+        advertised in the /v1/models discovery response.
+        """
         candidates = (
             ("MODEL", self.model),
             ("MODEL_OPUS", self.model_opus),
@@ -494,9 +518,8 @@ class Settings(BaseSettings):
         )
         sources_by_ref: dict[str, list[str]] = {}
         for source, model_ref in candidates:
-            if model_ref is None:
-                continue
-            sources_by_ref.setdefault(model_ref, []).append(source)
+            for entry in Settings.split_model_chain(model_ref):
+                sources_by_ref.setdefault(entry, []).append(source)
 
         return tuple(
             ConfiguredChatModelRef(

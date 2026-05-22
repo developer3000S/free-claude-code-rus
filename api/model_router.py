@@ -34,6 +34,17 @@ class RoutedTokenCountRequest:
     resolved: ResolvedModel
 
 
+@dataclass(frozen=True, slots=True)
+class RoutedMessagesRequestChain:
+    """Ordered list of routed candidates to try in fallback order."""
+
+    candidates: tuple[RoutedMessagesRequest, ...]
+
+    @property
+    def primary(self) -> RoutedMessagesRequest:
+        return self.candidates[0]
+
+
 class ModelRouter:
     """Resolve incoming Claude model names to configured provider/model pairs."""
 
@@ -41,6 +52,16 @@ class ModelRouter:
         self._settings = settings
 
     def resolve(self, claude_model_name: str) -> ResolvedModel:
+        chain = self.resolve_chain(claude_model_name)
+        return chain[0]
+
+    def resolve_chain(self, claude_model_name: str) -> tuple[ResolvedModel, ...]:
+        """Resolve a Claude model name to an ordered chain of fallback candidates.
+
+        Direct provider model ids (``provider/model`` or ``anthropic/provider/model``)
+        always resolve to a single-entry chain. MODEL_OPUS/SONNET/HAIKU expand into
+        the full comma-separated fallback list configured in settings.
+        """
         (
             direct_provider_id,
             direct_provider_model,
@@ -52,36 +73,47 @@ class ModelRouter:
                 if force_thinking_enabled is not None
                 else self._settings.resolve_thinking(direct_provider_model)
             )
-            logger.debug(
-                "MODEL DIRECT: '{}' -> provider='{}' model='{}' thinking={}",
-                claude_model_name,
-                direct_provider_id,
-                direct_provider_model,
-                thinking_enabled,
-            )
-            return ResolvedModel(
-                original_model=claude_model_name,
-                provider_id=direct_provider_id,
-                provider_model=direct_provider_model,
-                provider_model_ref=claude_model_name,
-                thinking_enabled=thinking_enabled,
+            return (
+                ResolvedModel(
+                    original_model=claude_model_name,
+                    provider_id=direct_provider_id,
+                    provider_model=direct_provider_model,
+                    provider_model_ref=claude_model_name,
+                    thinking_enabled=thinking_enabled,
+                ),
             )
 
-        provider_model_ref = self._settings.resolve_model(claude_model_name)
         thinking_enabled = self._settings.resolve_thinking(claude_model_name)
-        provider_id = Settings.parse_provider_type(provider_model_ref)
-        provider_model = Settings.parse_model_name(provider_model_ref)
-        if provider_model != claude_model_name:
-            logger.debug(
-                "MODEL MAPPING: '{}' -> '{}'", claude_model_name, provider_model
+        chain_refs = self._settings.resolve_model_chain(claude_model_name)
+        if not chain_refs:
+            chain_refs = (self._settings.model,)
+
+        resolved_chain: list[ResolvedModel] = []
+        for provider_model_ref in chain_refs:
+            provider_id = Settings.parse_provider_type(provider_model_ref)
+            provider_model = Settings.parse_model_name(provider_model_ref)
+            resolved_chain.append(
+                ResolvedModel(
+                    original_model=claude_model_name,
+                    provider_id=provider_id,
+                    provider_model=provider_model,
+                    provider_model_ref=provider_model_ref,
+                    thinking_enabled=thinking_enabled,
+                )
             )
-        return ResolvedModel(
-            original_model=claude_model_name,
-            provider_id=provider_id,
-            provider_model=provider_model,
-            provider_model_ref=provider_model_ref,
-            thinking_enabled=thinking_enabled,
-        )
+        if len(resolved_chain) > 1:
+            logger.debug(
+                "MODEL CHAIN: '{}' -> {}",
+                claude_model_name,
+                [c.provider_model_ref for c in resolved_chain],
+            )
+        elif resolved_chain[0].provider_model != claude_model_name:
+            logger.debug(
+                "MODEL MAPPING: '{}' -> '{}'",
+                claude_model_name,
+                resolved_chain[0].provider_model,
+            )
+        return tuple(resolved_chain)
 
     def _direct_provider_model(
         self, model_name: str
@@ -108,11 +140,20 @@ class ModelRouter:
     def resolve_messages_request(
         self, request: MessagesRequest
     ) -> RoutedMessagesRequest:
-        """Return an internal routed request context."""
-        resolved = self.resolve(request.model)
-        routed = request.model_copy(deep=True)
-        routed.model = resolved.provider_model
-        return RoutedMessagesRequest(request=routed, resolved=resolved)
+        """Return an internal routed request context (first candidate only)."""
+        return self.resolve_messages_request_chain(request).primary
+
+    def resolve_messages_request_chain(
+        self, request: MessagesRequest
+    ) -> RoutedMessagesRequestChain:
+        """Return the ordered fallback chain of routed request contexts."""
+        chain = self.resolve_chain(request.model)
+        candidates: list[RoutedMessagesRequest] = []
+        for resolved in chain:
+            routed = request.model_copy(deep=True)
+            routed.model = resolved.provider_model
+            candidates.append(RoutedMessagesRequest(request=routed, resolved=resolved))
+        return RoutedMessagesRequestChain(candidates=tuple(candidates))
 
     def resolve_token_count_request(
         self, request: TokenCountRequest

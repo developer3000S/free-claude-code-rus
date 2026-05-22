@@ -343,6 +343,7 @@ class AnthropicMessagesTransport(BaseProvider):
         *,
         request_id: str | None = None,
         thinking_enabled: bool | None = None,
+        raise_pre_stream_errors: bool = False,
     ) -> AsyncIterator[str]:
         """Stream response via a native Anthropic-compatible messages endpoint."""
         tag = self._provider_name
@@ -414,6 +415,21 @@ class AnthropicMessagesTransport(BaseProvider):
                     self._log_stream_transport_error(
                         tag, req_tag, error, request_id=request_id
                     )
+
+                if raise_pre_stream_errors and not sent_any_event:
+                    if response is not None and not response.is_closed:
+                        await _maybe_await_aclose(response)
+                    from providers.error_mapping import map_error
+
+                    mapped = map_error(error, rate_limiter=self._global_rate_limiter)
+                    logger.info(
+                        "{}_STREAM: Raising pre-stream error for fallback: {}{}",
+                        tag,
+                        type(mapped).__name__,
+                        req_tag,
+                    )
+                    raise mapped from error
+
                 error_message = self._get_error_message(error, request_id)
 
                 if response is not None and not response.is_closed:

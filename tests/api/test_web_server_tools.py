@@ -43,9 +43,7 @@ class FixedProviderModelRouter(ModelRouter):
         super().__init__(settings)
         self._fixed_provider_id = provider_id
 
-    def resolve_messages_request(
-        self, request: MessagesRequest
-    ) -> RoutedMessagesRequest:
+    def _pinned_routed(self, request: MessagesRequest) -> RoutedMessagesRequest:
         resolved = ResolvedModel(
             original_model=request.model,
             provider_id=self._fixed_provider_id,
@@ -56,6 +54,16 @@ class FixedProviderModelRouter(ModelRouter):
         routed = request.model_copy(deep=True)
         routed.model = resolved.provider_model
         return RoutedMessagesRequest(request=routed, resolved=resolved)
+
+    def resolve_messages_request(
+        self, request: MessagesRequest
+    ) -> RoutedMessagesRequest:
+        return self._pinned_routed(request)
+
+    def resolve_messages_request_chain(self, request: MessagesRequest):
+        from api.model_router import RoutedMessagesRequestChain
+
+        return RoutedMessagesRequestChain(candidates=(self._pinned_routed(request),))
 
 
 def test_web_server_tool_not_detected_when_tool_only_listed():

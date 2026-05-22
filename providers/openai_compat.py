@@ -325,11 +325,16 @@ class OpenAIChatTransport(BaseProvider):
         *,
         request_id: str | None = None,
         thinking_enabled: bool | None = None,
+        raise_pre_stream_errors: bool = False,
     ) -> AsyncIterator[str]:
         """Stream response in Anthropic SSE format."""
         with logger.contextualize(request_id=request_id):
             async for event in self._stream_response_impl(
-                request, input_tokens, request_id, thinking_enabled=thinking_enabled
+                request,
+                input_tokens,
+                request_id,
+                thinking_enabled=thinking_enabled,
+                raise_pre_stream_errors=raise_pre_stream_errors,
             ):
                 yield event
 
@@ -340,6 +345,7 @@ class OpenAIChatTransport(BaseProvider):
         request_id: str | None,
         *,
         thinking_enabled: bool | None,
+        raise_pre_stream_errors: bool = False,
     ) -> AsyncIterator[str]:
         """Shared streaming implementation."""
         tag = self._provider_name
@@ -366,18 +372,19 @@ class OpenAIChatTransport(BaseProvider):
             body=provider_chat_body_snapshot(body),
         )
 
-        yield sse.message_start()
-
         think_parser = ThinkTagParser()
         heuristic_parser = HeuristicToolParser()
         finish_reason = None
         usage_info = None
         tool_argument_aliases: dict[str, dict[str, str]] = {}
         tool_argument_alias_buffers: dict[int, str] = {}
+        sent_message_start = False
 
         async with self._global_rate_limiter.concurrency_slot():
             try:
                 stream, body = await self._create_stream(body)
+                yield sse.message_start()
+                sent_message_start = True
                 tool_argument_aliases = self._tool_argument_aliases(body)
                 async for chunk in stream:
                     if getattr(chunk, "usage", None):
@@ -461,6 +468,16 @@ class OpenAIChatTransport(BaseProvider):
             except Exception as e:
                 self._log_stream_transport_error(tag, req_tag, e, request_id=request_id)
                 mapped_e = map_error(e, rate_limiter=self._global_rate_limiter)
+
+                if raise_pre_stream_errors and not sent_message_start:
+                    logger.info(
+                        "{}_STREAM: Raising pre-stream error for fallback: {}{}",
+                        tag,
+                        type(mapped_e).__name__,
+                        req_tag,
+                    )
+                    raise mapped_e from e
+
                 base_message = user_visible_message_for_mapped_provider_error(
                     mapped_e,
                     provider_name=tag,
@@ -475,6 +492,9 @@ class OpenAIChatTransport(BaseProvider):
                     error_message=error_message,
                     mapped_error_type=type(mapped_e).__name__,
                 )
+                if not sent_message_start:
+                    yield sse.message_start()
+                    sent_message_start = True
                 for event in sse.close_all_blocks():
                     yield event
                 if sse.blocks.has_emitted_tool_block():

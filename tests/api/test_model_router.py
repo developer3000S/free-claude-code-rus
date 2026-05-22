@@ -200,3 +200,64 @@ def test_model_router_logs_mapping(settings):
     assert "MODEL MAPPING" in args[0]
     assert args[1] == "claude-2.1"
     assert args[2] == "fallback-model"
+
+
+def test_model_router_resolve_chain_expands_comma_list(settings):
+    settings.model_opus = "nvidia_nim/big,open_router/qwen/qwen3-coder:free,nvidia_nim/small"
+
+    chain = ModelRouter(settings).resolve_chain("claude-opus-4-20250514")
+
+    assert len(chain) == 3
+    assert chain[0].provider_id == "nvidia_nim"
+    assert chain[0].provider_model == "big"
+    assert chain[1].provider_id == "open_router"
+    assert chain[1].provider_model == "qwen/qwen3-coder:free"
+    assert chain[2].provider_id == "nvidia_nim"
+    assert chain[2].provider_model == "small"
+    for entry in chain:
+        assert entry.original_model == "claude-opus-4-20250514"
+
+
+def test_model_router_resolve_returns_first_chain_entry(settings):
+    settings.model_sonnet = "nvidia_nim/primary,open_router/secondary:free"
+
+    resolved = ModelRouter(settings).resolve("claude-sonnet-4-20250514")
+
+    assert resolved.provider_id == "nvidia_nim"
+    assert resolved.provider_model == "primary"
+
+
+def test_model_router_resolve_chain_single_entry_for_direct_model(settings):
+    chain = ModelRouter(settings).resolve_chain(
+        "anthropic/nvidia_nim/deepseek-ai/deepseek-v4-pro"
+    )
+
+    assert len(chain) == 1
+    assert chain[0].provider_id == "nvidia_nim"
+    assert chain[0].provider_model == "deepseek-ai/deepseek-v4-pro"
+
+
+def test_model_router_resolve_messages_request_chain(settings):
+    settings.model_haiku = "lmstudio/local-a,ollama/local-b"
+
+    request = MessagesRequest(
+        model="claude-3-haiku-20240307",
+        max_tokens=50,
+        messages=[Message(role="user", content="hi")],
+    )
+    routed_chain = ModelRouter(settings).resolve_messages_request_chain(request)
+
+    assert len(routed_chain.candidates) == 2
+    assert routed_chain.primary.request.model == "local-a"
+    assert routed_chain.candidates[1].request.model == "local-b"
+    # The original request must not be mutated.
+    assert request.model == "claude-3-haiku-20240307"
+
+
+def test_model_router_falls_back_to_default_model_chain_when_role_unset(settings):
+    settings.model = "nvidia_nim/a,nvidia_nim/b"
+    settings.model_haiku = None
+
+    chain = ModelRouter(settings).resolve_chain("claude-3-haiku-20240307")
+
+    assert [c.provider_model for c in chain] == ["a", "b"]
