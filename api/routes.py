@@ -169,8 +169,16 @@ async def create_message(
     service: ClaudeProxyService = Depends(get_proxy_service),
     _auth=Depends(require_api_key),
 ):
-    """Create a message (always streaming)."""
-    return service.create_message(request_data)
+    """Create a message.
+
+    Streams SSE when ``stream: true`` is explicitly set; otherwise returns a
+    single JSON Messages response. Matches Anthropic API contract so clients
+    using the official SDK or LiteLLM/OpenAI adapters that omit ``stream`` get
+    back a JSON body instead of a partial SSE stream they can't decode.
+    """
+    if request_data.stream is True:
+        return service.create_message(request_data)
+    return await service.create_message_non_streaming(request_data)
 
 
 @router.api_route("/v1/messages", methods=["HEAD", "OPTIONS"])

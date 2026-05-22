@@ -95,6 +95,39 @@ def test_create_message_stream(client: TestClient):
     assert b"message_start" in content or b"event:" in content
 
 
+def test_create_message_non_streaming_returns_json(client: TestClient):
+    """Omitting stream (Anthropic default) returns a single JSON Messages object."""
+    payload = {
+        "model": "claude-3-sonnet",
+        "messages": [{"role": "user", "content": "Hi"}],
+        "max_tokens": 100,
+    }
+    response = client.post("/v1/messages", json=payload)
+    assert response.status_code == 200
+    assert "application/json" in response.headers.get("content-type", "")
+    body = response.json()
+    assert body["type"] == "message"
+    assert body["role"] == "assistant"
+    assert isinstance(body["content"], list)
+    assert "usage" in body
+    assert "stop_reason" in body
+
+
+def test_create_message_explicit_stream_false_returns_json(client: TestClient):
+    """Explicit stream:false also routes through the non-streaming path."""
+    payload = {
+        "model": "claude-3-sonnet",
+        "messages": [{"role": "user", "content": "Hi"}],
+        "max_tokens": 100,
+        "stream": False,
+    }
+    response = client.post("/v1/messages", json=payload)
+    assert response.status_code == 200
+    assert "application/json" in response.headers.get("content-type", "")
+    body = response.json()
+    assert body["type"] == "message"
+
+
 def test_model_mapping(client: TestClient):
     # Test Haiku mapping
     _stream_response_calls.clear()
@@ -246,3 +279,86 @@ def test_stop_endpoint_no_handler_no_cli_503(client: TestClient):
         delattr(app.state, "cli_manager")
     response = client.post("/stop")
     assert response.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_aggregate_sse_to_anthropic_response_assembles_message():
+    """Aggregator stitches an SSE stream into a single Messages JSON object."""
+    from api.services import aggregate_sse_to_anthropic_response
+
+    chunks = [
+        'event: message_start\n'
+        'data: {"type":"message_start","message":{"id":"msg_abc","type":"message",'
+        '"role":"assistant","content":[],"model":"qwen/qwen3-coder","stop_reason":null,'
+        '"stop_sequence":null,"usage":{"input_tokens":7,"output_tokens":1}}}\n\n',
+        'event: content_block_start\n'
+        'data: {"type":"content_block_start","index":0,'
+        '"content_block":{"type":"text","text":""}}\n\n',
+        'event: content_block_delta\n'
+        'data: {"type":"content_block_delta","index":0,'
+        '"delta":{"type":"text_delta","text":"Hello"}}\n\n',
+        'event: content_block_delta\n'
+        'data: {"type":"content_block_delta","index":0,'
+        '"delta":{"type":"text_delta","text":" world"}}\n\n',
+        'event: content_block_stop\n'
+        'data: {"type":"content_block_stop","index":0}\n\n',
+        'event: message_delta\n'
+        'data: {"type":"message_delta","delta":{"stop_reason":"end_turn",'
+        '"stop_sequence":null},"usage":{"output_tokens":6}}\n\n',
+        'event: message_stop\n'
+        'data: {"type":"message_stop"}\n\n',
+    ]
+
+    async def fake_stream():
+        for c in chunks:
+            yield c
+
+    msg = await aggregate_sse_to_anthropic_response(fake_stream())
+
+    assert msg["id"] == "msg_abc"
+    assert msg["type"] == "message"
+    assert msg["role"] == "assistant"
+    assert msg["model"] == "qwen/qwen3-coder"
+    assert msg["stop_reason"] == "end_turn"
+    assert msg["content"] == [{"type": "text", "text": "Hello world"}]
+    assert msg["usage"] == {"input_tokens": 7, "output_tokens": 6}
+
+
+@pytest.mark.asyncio
+async def test_aggregate_sse_to_anthropic_response_assembles_tool_use():
+    """Tool-use blocks merge their incremental input_json_delta payloads."""
+    from api.services import aggregate_sse_to_anthropic_response
+
+    chunks = [
+        'event: message_start\n'
+        'data: {"type":"message_start","message":{"id":"msg_t","type":"message",'
+        '"role":"assistant","content":[],"model":"m","stop_reason":null,'
+        '"stop_sequence":null,"usage":{"input_tokens":2,"output_tokens":1}}}\n\n',
+        'event: content_block_start\n'
+        'data: {"type":"content_block_start","index":0,'
+        '"content_block":{"type":"tool_use","id":"toolu_1","name":"echo"}}\n\n',
+        'event: content_block_delta\n'
+        'data: {"type":"content_block_delta","index":0,'
+        '"delta":{"type":"input_json_delta","partial_json":"{\\"q\\":"}}\n\n',
+        'event: content_block_delta\n'
+        'data: {"type":"content_block_delta","index":0,'
+        '"delta":{"type":"input_json_delta","partial_json":"\\"hi\\"}"}}\n\n',
+        'event: content_block_stop\n'
+        'data: {"type":"content_block_stop","index":0}\n\n',
+        'event: message_delta\n'
+        'data: {"type":"message_delta","delta":{"stop_reason":"tool_use"},'
+        '"usage":{"output_tokens":4}}\n\n',
+        'event: message_stop\ndata: {"type":"message_stop"}\n\n',
+    ]
+
+    async def fake_stream():
+        for c in chunks:
+            yield c
+
+    msg = await aggregate_sse_to_anthropic_response(fake_stream())
+
+    assert msg["stop_reason"] == "tool_use"
+    assert msg["content"][0]["type"] == "tool_use"
+    assert msg["content"][0]["name"] == "echo"
+    assert msg["content"][0]["id"] == "toolu_1"
+    assert msg["content"][0]["input"] == {"q": "hi"}

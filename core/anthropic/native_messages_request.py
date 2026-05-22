@@ -241,6 +241,10 @@ def build_base_native_anthropic_request_body(
             thinking_enabled=thinking_enabled,
         )
 
+    # Native streaming transports always consume an SSE stream upstream. The
+    # gateway aggregates the events back into JSON for non-streaming clients.
+    body["stream"] = True
+
     return body
 
 

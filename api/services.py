@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import contextlib
+import json
 import traceback
 import uuid
 from collections.abc import AsyncIterator, Callable
 from typing import Any
 
 from fastapi import HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from loguru import logger
 
 from config.settings import Settings
@@ -79,6 +81,126 @@ def _log_unexpected_service_exception(
         logger.error("{} exc_type={}", context, type(exc).__name__)
 
 
+def _parse_sse_event(raw: str) -> tuple[str | None, dict | None]:
+    """Parse one SSE event chunk into ``(event_name, data_dict)``.
+
+    Returns ``(None, None)`` if the chunk is malformed or has no JSON payload.
+    """
+    event_name: str | None = None
+    data_str: str | None = None
+    for line in raw.splitlines():
+        if line.startswith("event:"):
+            event_name = line[6:].strip()
+        elif line.startswith("data:"):
+            piece = line[5:].strip()
+            data_str = piece if data_str is None else data_str + piece
+    if not event_name or data_str is None:
+        return None, None
+    try:
+        return event_name, json.loads(data_str)
+    except json.JSONDecodeError:
+        return event_name, None
+
+
+async def aggregate_sse_to_anthropic_response(
+    sse_stream: AsyncIterator[str],
+) -> dict[str, Any]:
+    """Consume an Anthropic SSE stream and assemble a single Messages JSON response.
+
+    Used to satisfy ``stream: false`` requests when the upstream gateway always
+    streams. Builds content blocks (text / tool_use / thinking) from the
+    block_start/delta/stop events and merges usage from message_delta.
+    """
+    message: dict[str, Any] = {
+        "id": f"msg_{uuid.uuid4().hex[:24]}",
+        "type": "message",
+        "role": "assistant",
+        "model": "",
+        "content": [],
+        "stop_reason": None,
+        "stop_sequence": None,
+        "usage": {"input_tokens": 0, "output_tokens": 0},
+    }
+    blocks: dict[int, dict[str, Any]] = {}
+    tool_arg_buffers: dict[int, list[str]] = {}
+    buffer = ""
+    async for chunk in sse_stream:
+        buffer += chunk
+        while "\n\n" in buffer:
+            event_text, buffer = buffer.split("\n\n", 1)
+            name, data = _parse_sse_event(event_text)
+            if name is None or data is None:
+                continue
+            if name == "message_start":
+                msg = data.get("message", {})
+                if isinstance(msg, dict):
+                    for k in ("id", "model"):
+                        if msg.get(k):
+                            message[k] = msg[k]
+                    usage = msg.get("usage")
+                    if isinstance(usage, dict):
+                        message["usage"]["input_tokens"] = usage.get(
+                            "input_tokens", message["usage"]["input_tokens"]
+                        )
+                        message["usage"]["output_tokens"] = usage.get(
+                            "output_tokens", message["usage"]["output_tokens"]
+                        )
+            elif name == "content_block_start":
+                idx = data.get("index", 0)
+                block = data.get("content_block", {})
+                if isinstance(block, dict):
+                    blocks[idx] = dict(block)
+                    if block.get("type") == "tool_use":
+                        tool_arg_buffers[idx] = []
+                        blocks[idx].setdefault("input", {})
+                    elif block.get("type") == "thinking":
+                        blocks[idx].setdefault("thinking", "")
+                    else:
+                        blocks[idx].setdefault("text", "")
+            elif name == "content_block_delta":
+                idx = data.get("index", 0)
+                delta = data.get("delta", {})
+                if not isinstance(delta, dict):
+                    continue
+                block = blocks.setdefault(idx, {"type": "text", "text": ""})
+                dtype = delta.get("type")
+                if dtype == "text_delta":
+                    block["text"] = block.get("text", "") + delta.get("text", "")
+                elif dtype == "thinking_delta":
+                    block["thinking"] = block.get("thinking", "") + delta.get(
+                        "thinking", ""
+                    )
+                elif dtype == "input_json_delta":
+                    tool_arg_buffers.setdefault(idx, []).append(
+                        delta.get("partial_json", "")
+                    )
+            elif name == "content_block_stop":
+                idx = data.get("index", 0)
+                if idx in tool_arg_buffers:
+                    joined = "".join(tool_arg_buffers.pop(idx))
+                    if joined:
+                        try:
+                            blocks[idx]["input"] = json.loads(joined)
+                        except json.JSONDecodeError:
+                            blocks[idx]["input"] = {"_raw": joined}
+            elif name == "message_delta":
+                delta = data.get("delta", {})
+                if isinstance(delta, dict):
+                    if "stop_reason" in delta:
+                        message["stop_reason"] = delta["stop_reason"]
+                    if "stop_sequence" in delta:
+                        message["stop_sequence"] = delta["stop_sequence"]
+                usage = data.get("usage", {})
+                if isinstance(usage, dict) and "output_tokens" in usage:
+                    message["usage"]["output_tokens"] = usage["output_tokens"]
+            elif name == "message_stop":
+                pass
+    message["content"] = [blocks[k] for k in sorted(blocks.keys())]
+    if message["stop_reason"] is None:
+        message["stop_reason"] = "end_turn"
+    return message
+
+
 def _require_non_empty_messages(messages: list[Any]) -> None:
     if not messages:
         raise InvalidRequestError("messages cannot be empty")
@@ -98,6 +220,29 @@ class ClaudeProxyService:
         self._provider_getter = provider_getter
         self._model_router = model_router or ModelRouter(settings)
         self._token_counter = token_counter
+
+    async def create_message_non_streaming(
+        self, request_data: MessagesRequest
+    ) -> JSONResponse:
+        """Aggregate the streaming response and return a single Messages JSON.
+
+        Used to satisfy clients that send ``stream: false`` (or omit ``stream``,
+        which Anthropic treats as non-streaming). The gateway always produces an
+        SSE stream internally; this method consumes it and returns the assembled
+        Anthropic Messages object as a JSON response.
+        """
+        streaming = self.create_message(request_data)
+        if not isinstance(streaming, StreamingResponse):
+            return streaming  # already a non-streaming response (e.g. optimization short-circuit)
+        body = streaming.body_iterator
+        try:
+            message = await aggregate_sse_to_anthropic_response(body)
+        finally:
+            close = getattr(body, "aclose", None)
+            if close is not None:
+                with contextlib.suppress(Exception):
+                    await close()
+        return JSONResponse(message)
 
     def create_message(self, request_data: MessagesRequest) -> object:
         """Create a message response or streaming response."""
