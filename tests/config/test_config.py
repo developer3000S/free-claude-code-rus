@@ -272,6 +272,16 @@ class TestSettings:
         settings = Settings()
         assert settings.wafer_api_key == "wafer-key"
 
+    def test_nemoclaw_settings_from_env(self, monkeypatch):
+        """NEMOCLAW_* env vars are loaded into settings."""
+        from config.settings import Settings
+
+        monkeypatch.setenv("NEMOCLAW_API_KEY", "nemoclaw-key")
+        monkeypatch.setenv("NEMOCLAW_BASE_URL", "https://nemoclaw.example/v1")
+        settings = Settings()
+        assert settings.nemoclaw_api_key == "nemoclaw-key"
+        assert settings.nemoclaw_base_url == "https://nemoclaw.example/v1"
+
     def test_per_model_thinking_from_env(self, monkeypatch):
         """Per-model thinking env vars are loaded into settings."""
         from config.settings import Settings
@@ -763,6 +773,7 @@ class TestPerModelMapping:
         assert Settings.parse_provider_type("llamacpp/model") == "llamacpp"
         assert Settings.parse_provider_type("ollama/llama3.1") == "ollama"
         assert Settings.parse_provider_type("wafer/DeepSeek-V4-Pro") == "wafer"
+        assert Settings.parse_provider_type("nemoclaw/model") == "nemoclaw"
 
     def test_parse_model_name(self):
         """parse_model_name extracts model name from model string."""
@@ -774,6 +785,7 @@ class TestPerModelMapping:
         assert Settings.parse_model_name("llamacpp/model") == "model"
         assert Settings.parse_model_name("ollama/llama3.1") == "llama3.1"
         assert Settings.parse_model_name("wafer/DeepSeek-V4-Pro") == "DeepSeek-V4-Pro"
+        assert Settings.parse_model_name("nemoclaw/model") == "model"
 
     def test_configured_chat_model_refs_collects_unique_models_with_sources(
         self, monkeypatch
