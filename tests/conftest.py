@@ -28,6 +28,24 @@ def _isolate_from_dotenv(monkeypatch):
     )
 
 
+@pytest.fixture(autouse=True)
+def _clear_proxy_env(monkeypatch):
+    """Ensure tests are not affected by environmental proxy settings."""
+    for key in [
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "ALL_PROXY",
+        "FTP_PROXY",
+        "http_proxy",
+        "https_proxy",
+        "all_proxy",
+        "ftp_proxy",
+        "NO_PROXY",
+        "no_proxy",
+    ]:
+        monkeypatch.delenv(key, raising=False)
+
+
 @pytest.fixture
 def provider_config():
     from providers.base import ProviderConfig

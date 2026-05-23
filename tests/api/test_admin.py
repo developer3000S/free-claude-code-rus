@@ -86,7 +86,7 @@ def test_admin_static_hides_managed_source_label():
 
     assert 'managed_env: "",' in script
     assert "hasOwnProperty.call(labels, source)" in script
-    assert 'parts.push("locked")' in script
+    assert 'parts.push("заблокировано")' in script
     assert "sourceEl.textContent = source" in script
 
 

@@ -530,8 +530,8 @@ class TestGetTokenCount:
 
     def test_known_payload_estimate_range(self):
         """Known payload produces estimate within expected range (validation harness)."""
-        import tiktoken
         import pytest
+        import tiktoken
 
         try:
             enc = tiktoken.get_encoding("cl100k_base")
