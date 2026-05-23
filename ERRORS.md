@@ -30,3 +30,8 @@ git push
 ```bash
 uv tool install --force git+https://github.com/Developer3000S/free-claude-code-rus.git
 ```
+## Оригинал
+```bash
+uv tool install --force git+https://github.com/Alishahryar1/free-claude-code.git
+#curl -fsSL "https://github.com/Alishahryar1/free-claude-code/blob/main/scripts/install.sh?raw=1" | sh
+```

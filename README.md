@@ -79,7 +79,6 @@ If you previously installed 3.14 with an older uv and see alpha-only behavior (e
 ### 3. Install The Proxy
 
 ```bash
-#uv tool install --force git+https://github.com/Developer3000S/free-claude-code-rus.git
 uv tool install --force git+https://github.com/Developer3000S/free-claude-code-rus.git
 ```
 
