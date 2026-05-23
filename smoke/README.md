@@ -141,7 +141,7 @@ uv run pytest smoke/product -n 0 -s --tb=short
 
 Run smoke the same way you run tests (`uv run pytest smoke` from the repo). Child
 processes use the **same Python interpreter** as the test runner, not nested
-`uv run`, so Windows does not try to replace `free-claude-code.exe` while it is
+`uv run`, so Windows does not try to replace `free-claude-code-rus.exe` while it is
 locked.
 
 ## Failure Classes
@@ -285,7 +285,7 @@ uv run pytest smoke/product -n 0 -s --tb=short
 
 ## Windows / вложенный `uv run`
 
-Запускайте smoke так же, как и тесты (`uv run pytest smoke` из репозитория). Дочерние процессы используют **тот же интерпретатор Python**, что и тестовый раннер, а не вложенный `uv run`, поэтому Windows не попытается заменить `free-claude-code.exe`, пока тот заблокирован.
+Запускайте smoke так же, как и тесты (`uv run pytest smoke` из репозитория). Дочерние процессы используют **тот же интерпретатор Python**, что и тестовый раннер, а не вложенный `uv run`, поэтому Windows не попытается заменить `free-claude-code-rus.exe`, пока тот заблокирован.
 
 ## Классы ошибок
 

@@ -61,8 +61,8 @@ def test_init_copies_template_content(tmp_path: Path) -> None:
 
 
 def test_init_migrates_home_checkout_env_before_template(tmp_path: Path) -> None:
-    """init() preserves users who kept config in ~/free-claude-code/.env."""
-    legacy_env = tmp_path / "free-claude-code" / ".env"
+    """init() preserves users who kept config in ~/free-claude-code-rus/.env."""
+    legacy_env = tmp_path / "free-claude-code-rus" / ".env"
     legacy_env.parent.mkdir(parents=True)
     legacy_env.write_text("MODEL=deepseek/deepseek-chat\n", encoding="utf-8")
 
@@ -73,8 +73,8 @@ def test_init_migrates_home_checkout_env_before_template(tmp_path: Path) -> None
 
 
 def test_init_migrates_legacy_xdg_env_before_template(tmp_path: Path) -> None:
-    """init() preserves users who kept config in ~/.config/free-claude-code/.env."""
-    legacy_env = tmp_path / ".config" / "free-claude-code" / ".env"
+    """init() preserves users who kept config in ~/.config/free-claude-code-rus/.env."""
+    legacy_env = tmp_path / ".config" / "free-claude-code-rus" / ".env"
     legacy_env.parent.mkdir(parents=True)
     legacy_env.write_text("MODEL=open_router/free-model\n", encoding="utf-8")
 
@@ -93,7 +93,7 @@ def test_legacy_env_migration_does_not_overwrite_managed_env(
     managed_env = tmp_path / ".fcc" / ".env"
     managed_env.parent.mkdir(parents=True)
     managed_env.write_text("MODEL=nvidia_nim/current\n", encoding="utf-8")
-    legacy_env = tmp_path / "free-claude-code" / ".env"
+    legacy_env = tmp_path / "free-claude-code-rus" / ".env"
     legacy_env.parent.mkdir(parents=True)
     legacy_env.write_text("MODEL=deepseek/legacy\n", encoding="utf-8")
 
@@ -155,7 +155,7 @@ def test_cli_scripts_are_registered() -> None:
 
     scripts = pyproject["project"]["scripts"]
     assert scripts["fcc-server"] == "cli.entrypoints:serve"
-    assert scripts["free-claude-code"] == "cli.entrypoints:serve"
+    assert scripts["free-claude-code-rus"] == "cli.entrypoints:serve"
     assert scripts["fcc-claude"] == "cli.entrypoints:launch_claude"
 
 
@@ -246,7 +246,7 @@ def test_serve_supervisor_restarts_when_app_requests_restart() -> None:
 def test_serve_migrates_legacy_env_before_loading_settings(tmp_path: Path) -> None:
     from cli import entrypoints
 
-    legacy_env = tmp_path / "free-claude-code" / ".env"
+    legacy_env = tmp_path / "free-claude-code-rus" / ".env"
     legacy_env.parent.mkdir(parents=True)
     legacy_env.write_text("MODEL=deepseek/deepseek-chat\n", encoding="utf-8")
     settings = _launcher_settings()
